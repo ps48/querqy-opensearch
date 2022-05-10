@@ -25,6 +25,7 @@ import org.opensearch.OpenSearchException;
 import org.opensearch.ResourceNotFoundException;
 import org.opensearch.action.get.GetResponse;
 import org.opensearch.client.Client;
+import org.opensearch.client.Requests;
 import org.opensearch.common.cache.Cache;
 import org.opensearch.common.settings.Setting;
 import org.opensearch.common.settings.Settings;
@@ -120,11 +121,8 @@ public class RewriterShardContext {
 
             final GetResponse response;
 
-            try {
-                response = client.prepareGet(QUERQY_INDEX_NAME, null, rewriterId).execute().get();
-            } catch (InterruptedException | ExecutionException e) {
-                throw new OpenSearchException("Could not load rewriter " + rewriterId, e);
-            }
+            //                response = client.prepareGet(QUERQY_INDEX_NAME, null, rewriterId).execute().get();
+            response = client.get(Requests.getRequest(QUERQY_INDEX_NAME).id(rewriterId)).actionGet();
 
             final Map<String, Object> source = response.getSource();
 

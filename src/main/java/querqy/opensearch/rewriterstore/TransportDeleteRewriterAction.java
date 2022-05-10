@@ -22,7 +22,9 @@ package querqy.opensearch.rewriterstore;
 import static querqy.opensearch.rewriterstore.Constants.QUERQY_INDEX_NAME;
 import static org.opensearch.action.ActionListener.wrap;
 
+import org.opensearch.action.ActionFuture;
 import org.opensearch.action.ActionListener;
+import org.opensearch.action.delete.DeleteRequest;
 import org.opensearch.action.delete.DeleteRequestBuilder;
 import org.opensearch.action.delete.DeleteResponse;
 import org.opensearch.action.support.ActionFilters;
@@ -49,9 +51,31 @@ public class TransportDeleteRewriterAction  extends HandledTransportAction<Delet
     protected void doExecute(final Task task, final DeleteRewriterRequest request,
                              final ActionListener<DeleteRewriterResponse> listener) {
 
-        final DeleteRequestBuilder deleteRequest = client.prepareDelete(QUERQY_INDEX_NAME, null,
-                request.getRewriterId());
-
+        final DeleteRequestBuilder deleteRequest = client.prepareDelete(QUERQY_INDEX_NAME, request.getRewriterId());
+//        DeleteRequest deleteRequest = (DeleteRequest) client.delete(new DeleteRequest(QUERQY_INDEX_NAME, request.getRewriterId()));
+//
+//        client.delete(deleteRequest, new ActionListener<DeleteResponse>() {
+//
+//            @Override
+//            public void onResponse(final DeleteResponse deleteResponse) {
+//
+//                // TODO: exit if response status code is 404 (though is shouldn't harm to clear the rewriter from cache
+//                // regardless)
+//
+//                client.execute(NodesClearRewriterCacheAction.INSTANCE,
+//                        new NodesClearRewriterCacheRequest(request.getRewriterId()),
+//                        wrap(
+//                                (clearResponse) -> listener.onResponse(new DeleteRewriterResponse(deleteResponse,
+//                                        clearResponse)),
+//                                listener::onFailure
+//                        ));
+//            }
+//
+//            @Override
+//            public void onFailure(final Exception e) {
+//                listener.onFailure(e);
+//            }
+//        });
         deleteRequest.execute(new ActionListener<DeleteResponse>() {
 
             @Override
