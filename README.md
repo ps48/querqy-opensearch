@@ -24,7 +24,7 @@ Querqy for OpenSearch can be used in the same way as Querqy for Elasticsearch, w
   `PUT /_querqy/rewriter/common_rules` 
   ```json
   {
-    "class": "querqy.opensearch.rewriter.SimpleCommonRulesRewriterFactory",
+    "class": "SimpleCommonRulesRewriterFactory",
     "config": {
         "rules" : "notebook =>\nSYNONYM: laptop"
     }
