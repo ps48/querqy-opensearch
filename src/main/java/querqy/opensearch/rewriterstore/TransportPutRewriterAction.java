@@ -20,6 +20,7 @@
 package querqy.opensearch.rewriterstore;
 
 import static org.opensearch.action.ActionListener.wrap;
+import static org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT;
 import static querqy.opensearch.rewriterstore.Constants.DEFAULT_QUERQY_INDEX_NUM_REPLICAS;
 import static querqy.opensearch.rewriterstore.Constants.QUERQY_INDEX_NAME;
 import static querqy.opensearch.rewriterstore.Constants.SETTINGS_QUERQY_INDEX_NUM_REPLICAS;
@@ -47,9 +48,11 @@ import org.opensearch.common.collect.ImmutableOpenMap;
 import org.opensearch.common.inject.Inject;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.xcontent.XContentType;
+import org.opensearch.commons.authuser.User;
 import org.opensearch.index.IndexNotFoundException;
 import org.opensearch.tasks.Task;
 import org.opensearch.transport.TransportService;
+import querqy.opensearch.security.UserAccessManager;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -79,6 +82,11 @@ public class TransportPutRewriterAction extends HandledTransportAction<PutRewrit
     @Override
     protected void doExecute(final Task task, final PutRewriterRequest request,
                              final ActionListener<PutRewriterResponse> listener) {
+
+        String userStr = client.threadPool().getThreadContext().getTransient(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
+        User user = User.parse(userStr);
+        UserAccessManager.validateUser(user);
+        LOGGER.info("######### do execute Transport Put rewriter action -----> " + userStr);
 
         final IndicesAdminClient indicesClient = client.admin().indices();
 

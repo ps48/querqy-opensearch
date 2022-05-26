@@ -23,17 +23,20 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.opensearch.OpenSearchException;
 import org.opensearch.ResourceNotFoundException;
+import org.opensearch.action.ActionType;
 import org.opensearch.action.get.GetResponse;
 import org.opensearch.client.Client;
 import org.opensearch.common.cache.Cache;
 import org.opensearch.common.settings.Setting;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.unit.TimeValue;
+import org.opensearch.commons.authuser.User;
 import org.opensearch.index.IndexService;
 import org.opensearch.index.shard.ShardId;
 import org.opensearch.indices.InvalidTypeNameException;
 import querqy.opensearch.rewriterstore.LoadRewriterConfig;
 import querqy.opensearch.rewriterstore.RewriterConfigMapping;
+import querqy.opensearch.security.UserAccessManager;
 import querqy.rewrite.RewriteChain;
 import querqy.rewrite.RewriterFactory;
 
@@ -45,9 +48,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
+import static org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT;
 import static querqy.opensearch.rewriterstore.Constants.QUERQY_INDEX_NAME;
 
 public class RewriterShardContext {
+
+    private static final String NAME = "cluster:admin/opensearch/querqy/get";
 
 
     public static final Setting<TimeValue> CACHE_EXPIRE_AFTER_WRITE = Setting.timeSetting(
@@ -113,6 +119,10 @@ public class RewriterShardContext {
     }
 
     public synchronized RewriterFactoryAndLogging loadFactory(final String rewriterId, final boolean forceLoad) {
+        UserAccessManager userAccessManager = new UserAccessManager();
+        String userStr = client.threadPool().getThreadContext().getTransient(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
+        User user = User.parse(userStr);
+        userAccessManager.validateUser(user);
 
         RewriterFactoryAndLogging factoryAndLogging = factories.get(rewriterId);
 

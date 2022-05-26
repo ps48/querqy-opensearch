@@ -70,6 +70,7 @@ import java.util.function.Supplier;
 
 public class QuerqyPlugin extends Plugin implements SearchPlugin, ActionPlugin {
 
+//    public String PLUGIN_NAME = "opensearch-querqy";
 
     private final QuerqyProcessor querqyProcessor;
     private final RewriterShardContexts rewriterShardContexts;

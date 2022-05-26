@@ -19,6 +19,7 @@
 
 package querqy.opensearch.rewriterstore;
 
+import static org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT;
 import static querqy.opensearch.rewriterstore.Constants.QUERQY_INDEX_NAME;
 import static org.opensearch.action.ActionListener.wrap;
 
@@ -30,8 +31,10 @@ import org.opensearch.action.support.HandledTransportAction;
 import org.opensearch.client.Client;
 import org.opensearch.cluster.service.ClusterService;
 import org.opensearch.common.inject.Inject;
+import org.opensearch.commons.authuser.User;
 import org.opensearch.tasks.Task;
 import org.opensearch.transport.TransportService;
+import querqy.opensearch.security.UserAccessManager;
 
 public class TransportDeleteRewriterAction  extends HandledTransportAction<DeleteRewriterRequest, DeleteRewriterResponse> {
 
@@ -48,6 +51,11 @@ public class TransportDeleteRewriterAction  extends HandledTransportAction<Delet
     @Override
     protected void doExecute(final Task task, final DeleteRewriterRequest request,
                              final ActionListener<DeleteRewriterResponse> listener) {
+
+        UserAccessManager userAccessManager = new UserAccessManager();
+        String userStr = client.threadPool().getThreadContext().getTransient(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
+        User user = User.parse(userStr);
+        userAccessManager.validateUser(user);
 
         final DeleteRequestBuilder deleteRequest = client.prepareDelete(QUERQY_INDEX_NAME, null,
                 request.getRewriterId());
