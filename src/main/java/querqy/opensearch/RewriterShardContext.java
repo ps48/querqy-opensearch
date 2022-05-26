@@ -142,10 +142,6 @@ public class RewriterShardContext {
                 throw new ResourceNotFoundException("Rewriter not found: " + rewriterId);
             }
 
-            if (!"rewriter".equals(source.get(RewriterConfigMapping.PROP_TYPE))) {
-                throw new InvalidTypeNameException("Not a rewriter: " + rewriterId);
-            }
-
             final LoadRewriterConfig loadConfig = new LoadRewriterConfig(rewriterId, source);
 
             final Map<String, Object> infoLogging = loadConfig.getInfoLoggingConfig();

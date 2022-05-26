@@ -85,7 +85,7 @@ public class QuerqyMappingsUpdate2To3IntegrationTest extends OpenSearchSingleNod
 
         final CreateIndexRequestBuilder createIndexRequestBuilder = indicesClient.prepareCreate(QUERQY_INDEX_NAME);
         final CreateIndexRequest createIndexRequest = createIndexRequestBuilder
-                .addMapping("querqy-rewriter", v2Mapping, XContentType.JSON)
+                .addMapping(v2Mapping, XContentType.JSON)
                 .setSettings(Settings.builder().put("number_of_replicas", 2))
                 .request();
         indicesClient.create(createIndexRequest).get();
@@ -105,7 +105,7 @@ public class QuerqyMappingsUpdate2To3IntegrationTest extends OpenSearchSingleNod
         final ImmutableOpenMap<String, ImmutableOpenMap<String, MappingMetadata>> mappings = indicesClient
                 .getMappings(getMappingsRequest).get().getMappings();
         final Map<String, Object> properties = (Map<String, Object>) mappings.get(QUERQY_INDEX_NAME)
-                .get("querqy-rewriter").getSourceAsMap().get("properties");
+                .get("properties");
         assertNotNull(properties);
         final Map<String, Object> info_logging = (Map<String, Object>) properties.get("info_logging");
         assertNotNull(info_logging);

@@ -39,7 +39,6 @@ public abstract class RewriterConfigMapping {
     public static final int CURRENT_MAPPING_VERSION = 3;
 
     public static final String PROP_VERSION = "version";
-    public static final String PROP_TYPE = "type";
 
     public static final RewriterConfigMapping CURRENT = new RewriterConfigMapping() {
 
@@ -132,7 +131,6 @@ public abstract class RewriterConfigMapping {
     @SuppressWarnings("unchecked")
     public static Map<String, Object> toLuceneSource(final Map<String, Object> putRequestContent) throws IOException {
         final Map<String, Object> source = new HashMap<>(putRequestContent.size() + 3);
-        source.put(PROP_TYPE, "rewriter");
         source.put(PROP_VERSION, CURRENT_MAPPING_VERSION);
         source.put(CURRENT.getRewriterClassNameProperty(), putRequestContent.get("class"));
 

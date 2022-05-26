@@ -55,8 +55,9 @@ import org.opensearch.transport.TransportService;
 import querqy.opensearch.security.UserAccessManager;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Scanner;
 import java.util.concurrent.ExecutionException;
 
@@ -100,8 +101,7 @@ public class TransportPutRewriterAction extends HandledTransportAction<PutRewrit
 
                 if (!mappingsVersionChecked) {
 
-                    final Map<String, Object> properties = (Map<String, Object>) mappings.get(QUERQY_INDEX_NAME)
-                        .get("querqy-rewriter").getSourceAsMap().get("properties");
+                    final Map<String, Object> properties = (Map<String, Object>) mappings.get(QUERQY_INDEX_NAME).get("properties");
                     if (!properties.containsKey("info_logging")) {
                         try {
                             update1To3(indicesClient);
@@ -165,21 +165,8 @@ public class TransportPutRewriterAction extends HandledTransportAction<PutRewrit
     protected void update1To3(final IndicesAdminClient indicesClient ) throws ExecutionException,
             InterruptedException {
         final PutMappingRequest request = new PutMappingRequest(QUERQY_INDEX_NAME).source(
-                "{\n" +
-                        "    \"properties\": {\n" +
-                        "      \"info_logging\": {\n" +
-                        "        \"properties\": {\n" +
-                        "          \"sinks\": {\"type\" : \"keyword\" }\n" +
-                        "        }\n" +
-                        "      },\n" +
-                        "      \"config_v_003\": {\n" +
-                        "        \"type\" : \"keyword\",\n" +
-                        "        \"doc_values\": false,\n" +
-                        "        \"index\": false\n" +
-                        "      }" +
-                        "    }\n" +
-                        "}", XContentType.JSON
-        ).type("querqy-rewriter");
+                readUtf8Resource("querqy-mapping1to3.json"), XContentType.JSON
+        );
 
         if (!indicesClient.putMapping(request).get().isAcknowledged()) {
             throw new IllegalStateException("Adding info_logging to mappings not " +
@@ -193,16 +180,8 @@ public class TransportPutRewriterAction extends HandledTransportAction<PutRewrit
     protected void update2To3(final IndicesAdminClient indicesClient ) throws ExecutionException,
             InterruptedException {
         final PutMappingRequest request = new PutMappingRequest(QUERQY_INDEX_NAME).source(
-                "{\n" +
-                        "    \"properties\": {\n" +
-                        "      \"config_v_003\": {\n" +
-                        "        \"type\" : \"keyword\",\n" +
-                        "        \"doc_values\": false,\n" +
-                        "        \"index\": false\n" +
-                        "      }" +
-                        "    }\n" +
-                        "}", XContentType.JSON
-        ).type("querqy-rewriter");
+                readUtf8Resource("querqy-mappings2to3.json"), XContentType.JSON
+        );
 
         if (!indicesClient.putMapping(request).get().isAcknowledged()) {
             throw new IllegalStateException("Adding config_v_003 to mappings not " +
@@ -218,7 +197,7 @@ public class TransportPutRewriterAction extends HandledTransportAction<PutRewrit
         final CreateIndexRequestBuilder createIndexRequestBuilder = indicesClient.prepareCreate(QUERQY_INDEX_NAME);
         final int numReplicas = settings.getAsInt(SETTINGS_QUERQY_INDEX_NUM_REPLICAS, DEFAULT_QUERQY_INDEX_NUM_REPLICAS);
         return  createIndexRequestBuilder
-                .addMapping("querqy-rewriter", readUtf8Resource("querqy-mapping.json"), XContentType.JSON)
+                .addMapping(readUtf8Resource("querqy-mapping.json"), XContentType.JSON)
                 .setSettings(Settings.builder().put("number_of_replicas", numReplicas))
                 .request();
     }
@@ -267,8 +246,8 @@ public class TransportPutRewriterAction extends HandledTransportAction<PutRewrit
 
 
     private static String readUtf8Resource(final String name) {
-        final Scanner scanner = new Scanner(TransportPutRewriterAction.class.getClassLoader().getResourceAsStream(name),
-                Charset.forName("utf-8").name()).useDelimiter("\\A");
+        final Scanner scanner = new Scanner(Objects.requireNonNull(TransportPutRewriterAction.class.getClassLoader().getResourceAsStream(name)),
+                StandardCharsets.UTF_8.name()).useDelimiter("\\A");
         return scanner.hasNext() ? scanner.next() : "";
     }
 
