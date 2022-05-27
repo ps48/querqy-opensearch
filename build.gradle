@@ -33,7 +33,7 @@ opensearchplugin {
 buildscript {
 
     ext {
-        opensearch_version = System.getProperty("opensearch.version", "1.3.1")
+        opensearch_version = System.getProperty("opensearch.version", "1.3.2")
     }
 
     repositories {
@@ -77,6 +77,7 @@ dependencies {
         exclude group: 'com.fasterxml.jackson.core', module: 'jackson-databind'
     }
 
+    compile("${group}:common-utils:1.3.2.0")
     compile('com.fasterxml.jackson.core:jackson-databind')
     compile('com.jayway.jsonpath:json-path:2.4.0')
 
@@ -106,14 +107,17 @@ configurations.all {
 
 
 
-forbiddenApisTest.enabled = false
-// checkstyleTest.enabled = false
-
-dependencyLicenses.enabled = false
-licenseHeaders.enabled = false
-thirdPartyAudit.enabled = false
-
-loggerUsageCheck.enabled = false
-testingConventions.enabled = false
+//javadoc.enabled = false // turn off javadoc as it barfs on Kotlin code
+licenseHeaders.enabled = true
+// no need to validate pom, as we do not upload to maven/sonatype
 validateNebulaPom.enabled = false
+dependencyLicenses.enabled = false
+thirdPartyAudit.enabled = false
+// Allow @Test to be used in test classes not inherited from LuceneTestCase.
+// see https://github.com/elastic/elasticsearch/blob/26c3dd6857d047054b2108f85bc2b040a9c81fe4/build-tools-internal/src/main/resources/forbidden/es-test-signatures.txt
+forbiddenApis.ignoreFailures = true
+// Allow test cases to be named Tests without having to be inherited from LuceneTestCase.
+// see https://github.com/elastic/elasticsearch/blob/323f312bbc829a63056a79ebe45adced5099f6e6/buildSrc/src/main/java/org/elasticsearch/gradle/precommit/TestingConventionsTasks.java
+testingConventions.enabled = false
+loggerUsageCheck.enabled = false
 

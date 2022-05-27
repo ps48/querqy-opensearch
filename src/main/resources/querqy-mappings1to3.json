@@ -1,0 +1,14 @@
+{
+  "properties": {
+    "info_logging": {
+      "properties": {
+        "sinks": {"type" : "keyword" }
+      }
+    },
+    "config_v_003": {
+      "type" : "keyword",
+      "doc_values": false,
+      "index": false
+    }
+  }
+}

@@ -157,20 +157,7 @@ public class TransportPutRewriterAction extends HandledTransportAction<PutRewrit
     protected void update1To3(final IndicesAdminClient indicesClient ) throws ExecutionException,
             InterruptedException {
         final PutMappingRequest request = new PutMappingRequest(QUERQY_INDEX_NAME).source(
-                "{\n" +
-                        "    \"properties\": {\n" +
-                        "      \"info_logging\": {\n" +
-                        "        \"properties\": {\n" +
-                        "          \"sinks\": {\"type\" : \"keyword\" }\n" +
-                        "        }\n" +
-                        "      },\n" +
-                        "      \"config_v_003\": {\n" +
-                        "        \"type\" : \"keyword\",\n" +
-                        "        \"doc_values\": false,\n" +
-                        "        \"index\": false\n" +
-                        "      }" +
-                        "    }\n" +
-                        "}", XContentType.JSON
+                readUtf8Resource("querqy-mappings1to3.json"), XContentType.JSON
         ).type("querqy-rewriter");
 
         if (!indicesClient.putMapping(request).get().isAcknowledged()) {
@@ -185,15 +172,7 @@ public class TransportPutRewriterAction extends HandledTransportAction<PutRewrit
     protected void update2To3(final IndicesAdminClient indicesClient ) throws ExecutionException,
             InterruptedException {
         final PutMappingRequest request = new PutMappingRequest(QUERQY_INDEX_NAME).source(
-                "{\n" +
-                        "    \"properties\": {\n" +
-                        "      \"config_v_003\": {\n" +
-                        "        \"type\" : \"keyword\",\n" +
-                        "        \"doc_values\": false,\n" +
-                        "        \"index\": false\n" +
-                        "      }" +
-                        "    }\n" +
-                        "}", XContentType.JSON
+                readUtf8Resource("querqy-mappings2to3.json"), XContentType.JSON
         ).type("querqy-rewriter");
 
         if (!indicesClient.putMapping(request).get().isAcknowledged()) {
