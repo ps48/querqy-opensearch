@@ -20,14 +20,18 @@
 package querqy.opensearch.rewriterstore;
 
 import static org.opensearch.action.ActionListener.wrap;
+import static org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT;
 import static querqy.opensearch.rewriterstore.Constants.DEFAULT_QUERQY_INDEX_NUM_REPLICAS;
 import static querqy.opensearch.rewriterstore.Constants.QUERQY_INDEX_NAME;
 import static querqy.opensearch.rewriterstore.Constants.SETTINGS_QUERQY_INDEX_NUM_REPLICAS;
 import static querqy.opensearch.rewriterstore.PutRewriterAction.NAME;
+import static querqy.opensearch.rewriterstore.RewriterConfigMapping.*;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.opensearch.action.ActionFuture;
 import org.opensearch.action.ActionListener;
+import org.opensearch.action.IndicesRequest;
 import org.opensearch.action.admin.indices.create.CreateIndexRequest;
 import org.opensearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.opensearch.action.admin.indices.create.CreateIndexResponse;
@@ -35,7 +39,10 @@ import org.opensearch.action.admin.indices.mapping.get.GetMappingsResponse;
 import org.opensearch.action.admin.indices.mapping.put.PutMappingRequest;
 import org.opensearch.action.index.IndexAction;
 import org.opensearch.action.index.IndexRequest;
+import org.opensearch.action.index.IndexRequestBuilder;
 import org.opensearch.action.index.IndexResponse;
+import org.opensearch.action.search.SearchRequest;
+import org.opensearch.action.search.SearchResponse;
 import org.opensearch.action.support.ActionFilters;
 import org.opensearch.action.support.HandledTransportAction;
 import org.opensearch.action.support.WriteRequest;
@@ -46,16 +53,24 @@ import org.opensearch.cluster.service.ClusterService;
 import org.opensearch.common.collect.ImmutableOpenMap;
 import org.opensearch.common.inject.Inject;
 import org.opensearch.common.settings.Settings;
+import org.opensearch.common.unit.TimeValue;
 import org.opensearch.common.xcontent.XContentType;
+import org.opensearch.commons.authuser.User;
 import org.opensearch.index.IndexNotFoundException;
+import org.opensearch.index.query.BoolQueryBuilder;
+import org.opensearch.index.query.QueryBuilders;
+import org.opensearch.search.SearchHits;
 import org.opensearch.tasks.Task;
 import org.opensearch.transport.TransportService;
+import querqy.opensearch.security.UserAccessManager;
+import org.opensearch.search.builder.SearchSourceBuilder;
+import querqy.opensearch.settings.PluginSettings;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.Map;
-import java.util.Scanner;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 public class TransportPutRewriterAction extends HandledTransportAction<PutRewriterRequest, PutRewriterResponse> {
 
@@ -65,6 +80,7 @@ public class TransportPutRewriterAction extends HandledTransportAction<PutRewrit
     private final ClusterService clusterService;
     private final Settings settings;
     private boolean mappingsVersionChecked = false;
+    private final PluginSettings pluginSettings = PluginSettings.getInstance();
 
     @Inject
     public TransportPutRewriterAction(final TransportService transportService, final ActionFilters actionFilters,
@@ -223,10 +239,35 @@ public class TransportPutRewriterAction extends HandledTransportAction<PutRewrit
     }
 
     private IndexRequest buildIndexRequest(final Task parentTask, final PutRewriterRequest request) throws IOException {
+        String userStr = client.threadPool().getThreadContext().getTransient(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
+        User user = User.parse(userStr);
+        LOGGER.info("access" + String.join(", ", UserAccessManager.getAllAccessInfo(user)));
 
-        final IndexRequest indexRequest = client.prepareIndex(QUERQY_INDEX_NAME, null, request.getRewriterId())
-                .setCreate(false)
-                .setSource(RewriterConfigMapping.toLuceneSource(request.getContent()))
+        SearchRequest searchRequest = querqyObjectSearchRequest(request.getRewriterId(), user);
+        ActionFuture<SearchResponse> actionFuture = client.search(searchRequest);
+        SearchResponse response = actionFuture.actionGet(pluginSettings.operationTimeoutMs);
+        SearchHits hits = response.getHits();
+        long totalHits = hits.getTotalHits().value;
+        String querqyObjectId = null;
+        IndexRequestBuilder indexRequestBuilder = null;
+        if (totalHits == 0){
+            LOGGER.info("Didn't find matching rewrite rule in the index. " +
+                    "Continue to create a new rule for: "+request.getRewriterId());
+            indexRequestBuilder = client.prepareIndex(QUERQY_INDEX_NAME, null);
+        }
+        else if (totalHits!= 1){
+            LOGGER.error("More than one matching document found, for a rule rewriter");
+        }
+        else{
+            querqyObjectId = hits.getAt(0).getId();;
+            LOGGER.info("fetched queried querqy object with Id: "+querqyObjectId);
+            indexRequestBuilder = client.prepareIndex(QUERQY_INDEX_NAME, null, querqyObjectId);
+        }
+        LOGGER.info("Saved rewriter {}",response);
+
+        IndexRequest indexRequest = indexRequestBuilder.setCreate(false)
+                .setSource(RewriterConfigMapping.toLuceneSource(request.getContent(), request.getRewriterId(),
+                        UserAccessManager.getUserTenant(user), UserAccessManager.getAllAccessInfo(user)))
                 .setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE)
                 .request();
         indexRequest.setParentTask(clusterService.localNode().getId(), parentTask.getId());
@@ -235,13 +276,47 @@ public class TransportPutRewriterAction extends HandledTransportAction<PutRewrit
 
 
 
-
-
     private static String readUtf8Resource(final String name) {
         final Scanner scanner = new Scanner(TransportPutRewriterAction.class.getClassLoader().getResourceAsStream(name),
                 Charset.forName("utf-8").name()).useDelimiter("\\A");
         return scanner.hasNext() ? scanner.next() : "";
     }
+
+    private SearchRequest queryBuilder(String rewriter_name, User user){
+        BoolQueryBuilder query = QueryBuilders.boolQuery();
+        query.filter(QueryBuilders.termsQuery(PROP_REWRITER_NAME,rewriter_name));
+        query.filter(QueryBuilders.termsQuery(PROP_TENANT, UserAccessManager.getUserTenant(user)));
+        if (!UserAccessManager.getAllAccessInfo(user).isEmpty()) {
+            query.filter(QueryBuilders.termsQuery(PROP_ACCESS, UserAccessManager.getAllAccessInfo(user)));
+        }
+
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+        sourceBuilder.timeout(new TimeValue(pluginSettings.operationTimeoutMs, TimeUnit.MILLISECONDS)).size(1);
+        SearchRequest searchRequest = new SearchRequest();
+        searchRequest.indices(QUERQY_INDEX_NAME).source(sourceBuilder);
+
+        sourceBuilder.query(query);
+        return searchRequest;
+    }
+
+    private SearchRequest querqyObjectSearchRequest(String rewriter_name, User user){
+        BoolQueryBuilder query = QueryBuilders.boolQuery();
+        query.filter(QueryBuilders.termsQuery(PROP_REWRITER_NAME,rewriter_name));
+        query.filter(QueryBuilders.termsQuery(PROP_TENANT, UserAccessManager.getUserTenant(user)));
+        if (!UserAccessManager.getAllAccessInfo(user).isEmpty()) {
+            query.filter(QueryBuilders.termsQuery(PROP_ACCESS, UserAccessManager.getAllAccessInfo(user)));
+        }
+
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+        sourceBuilder.timeout(new TimeValue(pluginSettings.operationTimeoutMs, TimeUnit.MILLISECONDS)).size(1);
+        SearchRequest searchRequest = new SearchRequest();
+        searchRequest.indices(QUERQY_INDEX_NAME).source(sourceBuilder);
+
+        sourceBuilder.query(query);
+        return searchRequest;
+    }
+
+
 
 
 

@@ -61,6 +61,7 @@ import querqy.opensearch.rewriterstore.TransportDeleteRewriterAction;
 import querqy.opensearch.rewriterstore.TransportNodesClearRewriterCacheAction;
 import querqy.opensearch.rewriterstore.TransportNodesReloadRewriterAction;
 import querqy.opensearch.rewriterstore.TransportPutRewriterAction;
+import querqy.opensearch.settings.PluginSettings;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -73,6 +74,7 @@ public class QuerqyPlugin extends Plugin implements SearchPlugin, ActionPlugin {
 
     private final QuerqyProcessor querqyProcessor;
     private final RewriterShardContexts rewriterShardContexts;
+    private final PluginSettings pluginSettings = PluginSettings.getInstance();
 
     public QuerqyPlugin(final Settings settings) {
         rewriterShardContexts = new RewriterShardContexts(settings);
@@ -132,13 +134,16 @@ public class QuerqyPlugin extends Plugin implements SearchPlugin, ActionPlugin {
                                                final NamedWriteableRegistry namedWriteableRegistry,
                                                IndexNameExpressionResolver indexNameExpressionResolver,
                                                Supplier<RepositoriesService> repositoriesServiceSupplier) {
+//        RewriterShardContext.instantiateClient(client);
+        pluginSettings.addSettingsUpdateConsumer(clusterService);
         return Arrays.asList(rewriterShardContexts, querqyProcessor);
     }
 
     @Override
     public List<Setting<?>> getSettings() {
-        return Collections.singletonList(Setting.intSetting(SETTINGS_QUERQY_INDEX_NUM_REPLICAS, 1, 0,
-                Setting.Property.NodeScope));
+//        return Collections.singletonList(Setting.intSetting(SETTINGS_QUERQY_INDEX_NUM_REPLICAS, 1, 0,
+//                Setting.Property.NodeScope));
+        return pluginSettings.getAllSettings();
 
     }
 }

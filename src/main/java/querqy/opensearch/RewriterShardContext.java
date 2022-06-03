@@ -23,17 +23,28 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.opensearch.OpenSearchException;
 import org.opensearch.ResourceNotFoundException;
+import org.opensearch.action.ActionFuture;
 import org.opensearch.action.get.GetResponse;
+import org.opensearch.action.index.IndexRequestBuilder;
+import org.opensearch.action.search.SearchRequest;
+import org.opensearch.action.search.SearchResponse;
 import org.opensearch.client.Client;
 import org.opensearch.common.cache.Cache;
 import org.opensearch.common.settings.Setting;
 import org.opensearch.common.settings.Settings;
 import org.opensearch.common.unit.TimeValue;
+import org.opensearch.commons.authuser.User;
 import org.opensearch.index.IndexService;
+import org.opensearch.index.query.BoolQueryBuilder;
+import org.opensearch.index.query.QueryBuilders;
 import org.opensearch.index.shard.ShardId;
 import org.opensearch.indices.InvalidTypeNameException;
+import org.opensearch.search.SearchHits;
+import org.opensearch.search.builder.SearchSourceBuilder;
 import querqy.opensearch.rewriterstore.LoadRewriterConfig;
 import querqy.opensearch.rewriterstore.RewriterConfigMapping;
+import querqy.opensearch.security.UserAccessManager;
+import querqy.opensearch.settings.PluginSettings;
 import querqy.rewrite.RewriteChain;
 import querqy.rewrite.RewriterFactory;
 
@@ -44,8 +55,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
+import static org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT;
 import static querqy.opensearch.rewriterstore.Constants.QUERQY_INDEX_NAME;
+import static querqy.opensearch.rewriterstore.RewriterConfigMapping.*;
 
 public class RewriterShardContext {
 
@@ -68,6 +82,7 @@ public class RewriterShardContext {
     final Client client;
     final IndexService indexService;
     final ShardId shardId;
+    private final PluginSettings pluginSettings = PluginSettings.getInstance();
 
     public RewriterShardContext(final ShardId shardId, final IndexService indexService, final Settings settings,
                                 final Client client) {
@@ -118,12 +133,33 @@ public class RewriterShardContext {
 
         if (forceLoad || (factoryAndLogging == null)) {
 
-            final GetResponse response;
+            GetResponse response = null;
 
-            try {
-                response = client.prepareGet(QUERQY_INDEX_NAME, null, rewriterId).execute().get();
-            } catch (InterruptedException | ExecutionException e) {
-                throw new OpenSearchException("Could not load rewriter " + rewriterId, e);
+            String userStr = client.threadPool().getThreadContext().getTransient(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
+            User user = User.parse(userStr);
+            LOGGER.info("access" + String.join(", ", UserAccessManager.getAllAccessInfo(user)));
+
+            SearchRequest searchRequest = querqyObjectSearchRequest(rewriterId, user);
+            ActionFuture<SearchResponse> actionFuture = client.search(searchRequest);
+            SearchResponse queryResponse = actionFuture.actionGet(pluginSettings.operationTimeoutMs);
+            SearchHits hits = queryResponse.getHits();
+            long totalHits = hits.getTotalHits().value;
+            String querqyObjectId = null;
+            if (totalHits == 0){
+                LOGGER.info("Didn't find matching rewrite rule in the index.");
+                throw new OpenSearchException("Could not load rewriter " + rewriterId);
+            }
+            else if (totalHits!= 1){
+                LOGGER.error("More than one matching document found, for a rule rewriter");
+            }
+            else{
+                querqyObjectId = hits.getAt(0).getId();;
+                LOGGER.info("fetched queried querqy object with Id: "+querqyObjectId);
+                try {
+                    response = client.prepareGet(QUERQY_INDEX_NAME, null, querqyObjectId).execute().get();
+                } catch (InterruptedException | ExecutionException e) {
+                    throw new OpenSearchException("Could not load rewriter " + rewriterId, e);
+                }
             }
 
             final Map<String, Object> source = response.getSource();
@@ -176,4 +212,25 @@ public class RewriterShardContext {
             this.loggingEnabled = loggingEnabled;
         }
     }
+
+    private SearchRequest querqyObjectSearchRequest(String rewriter_name, User user){
+        BoolQueryBuilder query = QueryBuilders.boolQuery();
+        query.filter(QueryBuilders.termsQuery(PROP_REWRITER_NAME,rewriter_name));
+        query.filter(QueryBuilders.termsQuery(PROP_TENANT, UserAccessManager.getUserTenant(user)));
+        if (!UserAccessManager.getAllAccessInfo(user).isEmpty()) {
+            query.filter(QueryBuilders.termsQuery(PROP_ACCESS, UserAccessManager.getAllAccessInfo(user)));
+        }
+
+        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+        sourceBuilder.timeout(new TimeValue(pluginSettings.operationTimeoutMs, TimeUnit.MILLISECONDS)).size(1);
+        SearchRequest searchRequest = new SearchRequest();
+        searchRequest.indices(QUERQY_INDEX_NAME).source(sourceBuilder);
+
+        sourceBuilder.query(query);
+        return searchRequest;
+    }
+
+//    public static void instantiateClient(Client client){
+//        RewriterShardContext.client = client;
+//    }
 }

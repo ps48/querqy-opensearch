@@ -26,13 +26,12 @@ import org.opensearch.common.xcontent.XContentBuilder;
 import org.opensearch.common.xcontent.XContentHelper;
 import org.opensearch.common.xcontent.XContentParser;
 import org.opensearch.common.xcontent.XContentType;
+import querqy.opensearch.security.UserAccessManager;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 public abstract class RewriterConfigMapping {
 
@@ -40,6 +39,9 @@ public abstract class RewriterConfigMapping {
 
     public static final String PROP_VERSION = "version";
     public static final String PROP_TYPE = "type";
+    public static final String PROP_REWRITER_NAME = "rewriter_name";
+    public static final String PROP_TENANT = "tenant";
+    public static final String PROP_ACCESS = "access";
 
     public static final RewriterConfigMapping CURRENT = new RewriterConfigMapping() {
 
@@ -130,11 +132,22 @@ public abstract class RewriterConfigMapping {
     }
 
     @SuppressWarnings("unchecked")
-    public static Map<String, Object> toLuceneSource(final Map<String, Object> putRequestContent) throws IOException {
+    public static Map<String, Object> toLuceneSource(final Map<String, Object> putRequestContent,
+                                                     final String rewriterName, final String tenant,
+                                                     final List<String> access) throws IOException {
         final Map<String, Object> source = new HashMap<>(putRequestContent.size() + 3);
         source.put(PROP_TYPE, "rewriter");
         source.put(PROP_VERSION, CURRENT_MAPPING_VERSION);
         source.put(CURRENT.getRewriterClassNameProperty(), putRequestContent.get("class"));
+        source.put(PROP_TENANT, Optional.ofNullable(tenant).orElse(UserAccessManager.DEFAULT_TENANT));
+
+        if (access != null) {
+            source.put(PROP_ACCESS, access);
+        }
+
+        if (rewriterName != null) {
+            source.put(PROP_REWRITER_NAME, rewriterName);
+        }
 
         final Map<String, Object> infoLoggingConfig = (Map<String, Object>) putRequestContent.get("info_logging");
         if (infoLoggingConfig != null) {

@@ -19,6 +19,7 @@
 
 package querqy.opensearch.security;
 
+import org.opensearch.OpenSearchException;
 import org.opensearch.commons.authuser.User;
 import org.opensearch.rest.RestStatus;
 import querqy.opensearch.settings.PluginSettings;
@@ -27,6 +28,7 @@ import org.opensearch.OpenSearchStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 /**
@@ -39,7 +41,8 @@ public class UserAccessManager {
     private static final String ALL_ACCESS_ROLE = "all_access";
     private static final String OPENSEARCH_DASHBOARDS_SERVER_USER = "opensearchdashboardsserver"; // TODO: Change it to background user when created.
     private static final String PRIVATE_TENANT = "__user__";
-    static final String DEFAULT_TENANT = "";
+    public static final String DEFAULT_TENANT = "";
+    private static final PluginSettings pluginSettings = PluginSettings.getInstance();
 
 //    PluginSettings PluginSettings = new PluginSettings();
 
@@ -62,21 +65,21 @@ public class UserAccessManager {
             );
         }
 
-        if (PluginSettings.filterBy == FilterBy.User) {
+        if (pluginSettings.filterBy == FilterBy.User) {
             if (user.getName() == null) {
                 throw new OpenSearchStatusException("Filter-by enabled with security disabled",
                         RestStatus.FORBIDDEN);
             }
         }
 
-        if (PluginSettings.filterBy == FilterBy.Roles) {
+        if (pluginSettings.filterBy == FilterBy.Roles) {
             if (user == null || user.getRoles().isEmpty()) {
                 throw new OpenSearchStatusException("No distinguishing roles configured. Contact administrator.",
                         RestStatus.FORBIDDEN);
             }
         }
 
-        if (PluginSettings.filterBy == FilterBy.BackendRoles) {
+        if (pluginSettings.filterBy == FilterBy.BackendRoles) {
             if (user == null || user.getBackendRoles().isEmpty()) {
                 throw new OpenSearchStatusException("User doesn't have backend roles configured. Contact administrator.",
                         RestStatus.FORBIDDEN);
@@ -102,27 +105,27 @@ public class UserAccessManager {
      * Get tenant info from user object.
      */
     public static String getUserTenant(User user) {
-        String requestedTenant = user.getRequestedTenant();
-        if (requestedTenant == null) {
+        try{
+            return user.getRequestedTenant();
+        }
+        catch (NullPointerException e) {
             return DEFAULT_TENANT;
-        } else {
-            return requestedTenant;
         }
     }
 
     /**
      * Get all user access info from user object.
      */
-    public List<String> getAllAccessInfo(User user) {
+    public static List<String> getAllAccessInfo(User user) {
         if (user == null) { // Security is disabled
             return new ArrayList<>();
         }
         ArrayList<String> retList = new ArrayList<>();
         if (user.getName() != null) {
-            retList.add("$USER_TAG${user.name}");
+            retList.add(USER_TAG + user.getName());
         }
-        user.getRoles().forEach(it -> retList.add("$ROLE_TAG$it"));
-        user.getBackendRoles().forEach(it -> retList.add("$BACKEND_ROLE_TAG$it"));
+        user.getRoles().forEach(it -> retList.add(ROLE_TAG + it));
+        user.getBackendRoles().forEach(it -> retList.add(BACKEND_ROLE_TAG + it));
         return retList;
     }
 
@@ -135,23 +138,23 @@ public class UserAccessManager {
         }
         if (isUserPrivateTenant(user)) {
             ArrayList<String> users = new ArrayList<>();
-            users.add("$USER_TAG${user.name}");
+            users.add(USER_TAG+user.getName());
             return users; // No sharing allowed in private tenant.
         }
         if (canAdminViewAllItems(user)) {
             return new ArrayList<>();
         }
-        if (PluginSettings.filterBy == FilterBy.NoFilter) return new ArrayList<>();
-        if (PluginSettings.filterBy == FilterBy.User) {
+        if (pluginSettings.filterBy == FilterBy.NoFilter) return new ArrayList<>();
+        if (pluginSettings.filterBy == FilterBy.User) {
             ArrayList<String> users = new ArrayList<>();
-            users.add("$USER_TAG${user.name}");
+            users.add(USER_TAG+user.getName());
             return users; // No sharing allowed in private tenant.
         }
-        if (PluginSettings.filterBy == FilterBy.Roles) {
-            return user.getRoles().stream().filter(it -> !PluginSettings.ignoredRoles.contains(it)).map(it -> "$ROLE_TAG$it").collect(Collectors.toList());
+        if (pluginSettings.filterBy == FilterBy.Roles) {
+            return user.getRoles().stream().filter(it -> !pluginSettings.ignoredRoles.contains(it)).map(it -> ROLE_TAG + it).collect(Collectors.toList());
         }
-        if (PluginSettings.filterBy == FilterBy.BackendRoles) {
-            return user.getBackendRoles().stream().map(it -> "$BACKEND_ROLE_TAG$it").collect(Collectors.toList());
+        if (pluginSettings.filterBy == FilterBy.BackendRoles) {
+            return user.getBackendRoles().stream().map(it -> BACKEND_ROLE_TAG + it).collect(Collectors.toList());
         }
         return new ArrayList<>();
     }
@@ -170,12 +173,12 @@ public class UserAccessManager {
             return true;
         }
 
-        if (PluginSettings.filterBy == FilterBy.NoFilter) return true;
-        if (PluginSettings.filterBy == FilterBy.User) return access.contains("$USER_TAG${user.name}");
-        if (PluginSettings.filterBy == FilterBy.Roles)
-            return user.getRoles().stream().filter(it -> !PluginSettings.ignoredRoles.contains(it)).map(it -> "$ROLE_TAG$it").anyMatch(access::contains);
-        if (PluginSettings.filterBy == FilterBy.BackendRoles)
-            return user.getBackendRoles().stream().map(it -> "$BACKEND_ROLE_TAG$it").anyMatch(access::contains);
+        if (pluginSettings.filterBy == FilterBy.NoFilter) return true;
+        if (pluginSettings.filterBy == FilterBy.User) return access.contains(USER_TAG+user.getName());
+        if (pluginSettings.filterBy == FilterBy.Roles)
+            return user.getRoles().stream().filter(it -> !pluginSettings.ignoredRoles.contains(it)).map(it -> ROLE_TAG + it).anyMatch(access::contains);
+        if (pluginSettings.filterBy == FilterBy.BackendRoles)
+            return user.getBackendRoles().stream().map(it -> BACKEND_ROLE_TAG + it).anyMatch(access::contains);
         return false;
     }
 
@@ -190,7 +193,7 @@ public class UserAccessManager {
     }
 
     private Boolean canAdminViewAllItems(User user) {
-        return PluginSettings.adminAccess == PluginSettings.AdminAccess.AllObservabilityObjects && isAdminUser(user);
+        return pluginSettings.adminAccess == PluginSettings.AdminAccess.AllObservabilityObjects && isAdminUser(user);
     }
 
     private Boolean isAdminUser(User user) {

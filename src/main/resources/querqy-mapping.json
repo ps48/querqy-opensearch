@@ -1,22 +1,38 @@
 {
-    "properties": {
-      "class": {"type": "keyword"},
-      "type": {"type": "keyword"},
-      "version": {"type":  "integer"},
-      "info_logging": {
-        "properties": {
-          "sinks": {"type" : "keyword" }
+  "properties": {
+    "access": {
+      "type": "keyword"
+    },
+    "tenant": {
+      "type": "keyword"
+    },
+    "rewriter_name": {
+      "type": "keyword"
+    },
+    "class": {
+      "type": "keyword"
+    },
+    "type": {
+      "type": "keyword"
+    },
+    "version": {
+      "type": "integer"
+    },
+    "info_logging": {
+      "properties": {
+        "sinks": {
+          "type": "keyword"
         }
-      },
-      "config": {
-        "type" : "keyword",
-        "index": false
-      },
-      "config_v_003": {
-        "type" : "keyword",
-        "doc_values": false,
-        "index": false
       }
-
+    },
+    "config": {
+      "type": "keyword",
+      "index": false
+    },
+    "config_v_003": {
+      "type": "keyword",
+      "doc_values": false,
+      "index": false
     }
+  }
 }
