@@ -41,6 +41,7 @@ import org.opensearch.index.shard.ShardId;
 import org.opensearch.indices.InvalidTypeNameException;
 import org.opensearch.search.SearchHits;
 import org.opensearch.search.builder.SearchSourceBuilder;
+import org.opensearch.threadpool.ThreadPool;
 import querqy.opensearch.rewriterstore.LoadRewriterConfig;
 import querqy.opensearch.rewriterstore.RewriterConfigMapping;
 import querqy.opensearch.security.UserAccessManager;
@@ -80,6 +81,7 @@ public class RewriterShardContext {
 
     final Cache<String, RewriterFactoryAndLogging> factories;
     final Client client;
+    static ThreadPool threadPool;
     final IndexService indexService;
     final ShardId shardId;
     private final PluginSettings pluginSettings = PluginSettings.getInstance();
@@ -135,9 +137,12 @@ public class RewriterShardContext {
 
             GetResponse response = null;
 
-            String userStr = client.threadPool().getThreadContext().getTransient(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
+            String userStr = threadPool.getThreadContext().getTransient(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
             User user = User.parse(userStr);
             LOGGER.info("access" + String.join(", ", UserAccessManager.getAllAccessInfo(user)));
+//            String userVal = threadPool.getThreadContext().getTransient("user");
+//            LOGGER.info("access" + userVal);
+            LOGGER.info("accessv2" + org.apache.logging.log4j.ThreadContext.get("user"));
 
             SearchRequest searchRequest = querqyObjectSearchRequest(rewriterId, user);
             ActionFuture<SearchResponse> actionFuture = client.search(searchRequest);
@@ -230,7 +235,7 @@ public class RewriterShardContext {
         return searchRequest;
     }
 
-//    public static void instantiateClient(Client client){
-//        RewriterShardContext.client = client;
-//    }
+    public static void instantiateThreadPool(ThreadPool threadPool){
+        RewriterShardContext.threadPool = threadPool;
+    }
 }

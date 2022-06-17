@@ -59,6 +59,7 @@ import org.opensearch.commons.authuser.User;
 import org.opensearch.index.IndexNotFoundException;
 import org.opensearch.index.query.BoolQueryBuilder;
 import org.opensearch.index.query.QueryBuilders;
+import org.opensearch.index.query.QueryShardException;
 import org.opensearch.search.SearchHits;
 import org.opensearch.tasks.Task;
 import org.opensearch.transport.TransportService;
@@ -71,6 +72,7 @@ import java.nio.charset.Charset;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class TransportPutRewriterAction extends HandledTransportAction<PutRewriterRequest, PutRewriterResponse> {
 
@@ -238,18 +240,33 @@ public class TransportPutRewriterAction extends HandledTransportAction<PutRewrit
         ;
     }
 
+    public String convertWithStream(Map<String, String> map) {
+        String mapAsString = map.keySet().stream()
+                .map(key -> key + "=" + map.get(key))
+                .collect(Collectors.joining(", ", "{", "}"));
+        return mapAsString;
+    }
+
     private IndexRequest buildIndexRequest(final Task parentTask, final PutRewriterRequest request) throws IOException {
+
+        String querqyObjectId = null;
+        IndexRequestBuilder indexRequestBuilder = null;
+        SearchResponse response = null;
+
         String userStr = client.threadPool().getThreadContext().getTransient(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
         User user = User.parse(userStr);
-        LOGGER.info("access" + String.join(", ", UserAccessManager.getAllAccessInfo(user)));
+        LOGGER.info("access" +userStr+" "+ String.join(", ", UserAccessManager.getAllAccessInfo(user)));
+        LOGGER.info("accessv2" + org.apache.logging.log4j.ThreadContext.get("user"));
+        LOGGER.info("accessv3" + convertWithStream(org.apache.logging.log4j.ThreadContext.getContext()));
+        LOGGER.info("accessv4" + convertWithStream(client.threadPool().getThreadContext().getHeaders()));
+
 
         SearchRequest searchRequest = querqyObjectSearchRequest(request.getRewriterId(), user);
         ActionFuture<SearchResponse> actionFuture = client.search(searchRequest);
-        SearchResponse response = actionFuture.actionGet(pluginSettings.operationTimeoutMs);
+        response =  actionFuture.actionGet(pluginSettings.operationTimeoutMs);
         SearchHits hits = response.getHits();
         long totalHits = hits.getTotalHits().value;
-        String querqyObjectId = null;
-        IndexRequestBuilder indexRequestBuilder = null;
+
         if (totalHits == 0){
             LOGGER.info("Didn't find matching rewrite rule in the index. " +
                     "Continue to create a new rule for: "+request.getRewriterId());
@@ -280,23 +297,6 @@ public class TransportPutRewriterAction extends HandledTransportAction<PutRewrit
         final Scanner scanner = new Scanner(TransportPutRewriterAction.class.getClassLoader().getResourceAsStream(name),
                 Charset.forName("utf-8").name()).useDelimiter("\\A");
         return scanner.hasNext() ? scanner.next() : "";
-    }
-
-    private SearchRequest queryBuilder(String rewriter_name, User user){
-        BoolQueryBuilder query = QueryBuilders.boolQuery();
-        query.filter(QueryBuilders.termsQuery(PROP_REWRITER_NAME,rewriter_name));
-        query.filter(QueryBuilders.termsQuery(PROP_TENANT, UserAccessManager.getUserTenant(user)));
-        if (!UserAccessManager.getAllAccessInfo(user).isEmpty()) {
-            query.filter(QueryBuilders.termsQuery(PROP_ACCESS, UserAccessManager.getAllAccessInfo(user)));
-        }
-
-        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
-        sourceBuilder.timeout(new TimeValue(pluginSettings.operationTimeoutMs, TimeUnit.MILLISECONDS)).size(1);
-        SearchRequest searchRequest = new SearchRequest();
-        searchRequest.indices(QUERQY_INDEX_NAME).source(sourceBuilder);
-
-        sourceBuilder.query(query);
-        return searchRequest;
     }
 
     private SearchRequest querqyObjectSearchRequest(String rewriter_name, User user){

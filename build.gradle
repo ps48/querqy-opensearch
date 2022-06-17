@@ -33,7 +33,7 @@ opensearchplugin {
 buildscript {
 
     ext {
-        opensearch_version = System.getProperty("opensearch.version", "1.3.2")
+        opensearch_version = System.getProperty("opensearch.version", "1.3.3")
     }
 
     repositories {

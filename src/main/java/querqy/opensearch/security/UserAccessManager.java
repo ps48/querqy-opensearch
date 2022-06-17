@@ -19,7 +19,6 @@
 
 package querqy.opensearch.security;
 
-import org.opensearch.OpenSearchException;
 import org.opensearch.commons.authuser.User;
 import org.opensearch.rest.RestStatus;
 import querqy.opensearch.settings.PluginSettings;
@@ -28,7 +27,6 @@ import org.opensearch.OpenSearchStatusException;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 /**
@@ -105,13 +103,21 @@ public class UserAccessManager {
      * Get tenant info from user object.
      */
     public static String getUserTenant(User user) {
-        try{
+        if (user == null || user.getRequestedTenant() == null) {
+            return DEFAULT_TENANT;
+        } else {
             return user.getRequestedTenant();
         }
-        catch (NullPointerException e) {
-            return DEFAULT_TENANT;
-        }
     }
+
+//    public static String getUserTenant(User user) {
+//        try{
+//            return user.getRequestedTenant();
+//        }
+//        catch (NullPointerException e) {
+//            return DEFAULT_TENANT;
+//        }
+//    }
 
     /**
      * Get all user access info from user object.

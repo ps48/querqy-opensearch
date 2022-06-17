@@ -19,18 +19,14 @@
 
 package querqy.opensearch.rewriterstore;
 
-public interface Constants {
+import org.opensearch.rest.BytesRestResponse;
+import org.opensearch.rest.RestResponse;
+import org.opensearch.rest.RestStatus;
 
-    // TODO: configurable?
-    String QUERQY_INDEX_NAME = ".opensearch-querqy";
-
-    String QUERQY_BASE_ROUTE = "/_plugins/_querqy";
-
-    String QUERQY_SEARCH_BASE_ROUTE = QUERQY_BASE_ROUTE +  "/search";
-
-    String QUERQY_REWRITER_BASE_ROUTE = QUERQY_BASE_ROUTE +  "/rewriter";
-
-    String SETTINGS_QUERQY_INDEX_NUM_REPLICAS = "querqy.store.replicas";
-
-    int DEFAULT_QUERQY_INDEX_NUM_REPLICAS = 1;
+public class SearchRewriterService {
+    public static RestResponse buildResponse(String name) {
+        String space = name.isEmpty()? "" : " ";
+        final String message = "Hi" + space + name + "! Your plugin is installed and working:)";
+        return new BytesRestResponse(RestStatus.OK, message);
+    }
 }

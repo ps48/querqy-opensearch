@@ -19,18 +19,17 @@
 
 package querqy.opensearch.rewriterstore;
 
-public interface Constants {
+import org.opensearch.action.ActionType;
 
-    // TODO: configurable?
-    String QUERQY_INDEX_NAME = ".opensearch-querqy";
+public class SearchRewriterAction extends ActionType<SearchRewriterResponse> {
 
-    String QUERQY_BASE_ROUTE = "/_plugins/_querqy";
+    public static final String NAME = "cluster:admin/querqy/search/index";
+    public static final SearchRewriterAction INSTANCE = new SearchRewriterAction(NAME);
 
-    String QUERQY_SEARCH_BASE_ROUTE = QUERQY_BASE_ROUTE +  "/search";
-
-    String QUERQY_REWRITER_BASE_ROUTE = QUERQY_BASE_ROUTE +  "/rewriter";
-
-    String SETTINGS_QUERQY_INDEX_NUM_REPLICAS = "querqy.store.replicas";
-
-    int DEFAULT_QUERQY_INDEX_NUM_REPLICAS = 1;
+    /**
+     * @param name The name of the action, must be unique across actions.
+     */
+    protected SearchRewriterAction(final String name) {
+        super(name, SearchRewriterResponse::new);
+    }
 }

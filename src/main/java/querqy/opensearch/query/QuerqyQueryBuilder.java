@@ -130,7 +130,7 @@ public class QuerqyQueryBuilder extends AbstractQueryBuilder<QuerqyQueryBuilder>
     }
 
     @Override
-    protected void doWriteTo(final StreamOutput out) throws IOException {
+    public void doWriteTo(final StreamOutput out) throws IOException {
         matchingQuery.writeTo(out);
         out.writeOptionalWriteable(boostingQueries);
         out.writeOptionalWriteable(generated);

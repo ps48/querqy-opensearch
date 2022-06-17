@@ -51,16 +51,7 @@ import org.opensearch.threadpool.ThreadPool;
 import org.opensearch.watcher.ResourceWatcherService;
 import querqy.opensearch.infologging.Log4jSink;
 import querqy.opensearch.query.QuerqyQueryBuilder;
-import querqy.opensearch.rewriterstore.DeleteRewriterAction;
-import querqy.opensearch.rewriterstore.NodesClearRewriterCacheAction;
-import querqy.opensearch.rewriterstore.NodesReloadRewriterAction;
-import querqy.opensearch.rewriterstore.RestDeleteRewriterAction;
-import querqy.opensearch.rewriterstore.RestPutRewriterAction;
-import querqy.opensearch.rewriterstore.PutRewriterAction;
-import querqy.opensearch.rewriterstore.TransportDeleteRewriterAction;
-import querqy.opensearch.rewriterstore.TransportNodesClearRewriterCacheAction;
-import querqy.opensearch.rewriterstore.TransportNodesReloadRewriterAction;
-import querqy.opensearch.rewriterstore.TransportPutRewriterAction;
+import querqy.opensearch.rewriterstore.*;
 import querqy.opensearch.settings.PluginSettings;
 
 import java.util.Arrays;
@@ -72,7 +63,8 @@ import java.util.function.Supplier;
 public class QuerqyPlugin extends Plugin implements SearchPlugin, ActionPlugin {
 
 
-    private final QuerqyProcessor querqyProcessor;
+    private static QuerqyProcessor querqyProcessor;
+//    public final QuerqyProcessor querqyProcessor;
     private final RewriterShardContexts rewriterShardContexts;
     private final PluginSettings pluginSettings = PluginSettings.getInstance();
 
@@ -108,7 +100,7 @@ public class QuerqyPlugin extends Plugin implements SearchPlugin, ActionPlugin {
                                              final IndexNameExpressionResolver indexNameExpressionResolver,
                                              final Supplier<DiscoveryNodes> nodesInCluster) {
 
-        return Arrays.asList(new RestPutRewriterAction(), new RestDeleteRewriterAction());
+        return Arrays.asList(new RestPutRewriterAction(), new RestDeleteRewriterAction(), new RestSearchRewriterAction());
 
     }
 
@@ -119,7 +111,8 @@ public class QuerqyPlugin extends Plugin implements SearchPlugin, ActionPlugin {
                 new ActionHandler<>(NodesReloadRewriterAction.INSTANCE, TransportNodesReloadRewriterAction.class),
                 new ActionHandler<>(DeleteRewriterAction.INSTANCE, TransportDeleteRewriterAction.class),
                 new ActionHandler<>(NodesClearRewriterCacheAction.INSTANCE, TransportNodesClearRewriterCacheAction
-                        .class)
+                        .class),
+                new ActionHandler<>(SearchRewriterAction.INSTANCE, TransportSearchRewriterAction.class)
 
         ));
     }
@@ -134,7 +127,9 @@ public class QuerqyPlugin extends Plugin implements SearchPlugin, ActionPlugin {
                                                final NamedWriteableRegistry namedWriteableRegistry,
                                                IndexNameExpressionResolver indexNameExpressionResolver,
                                                Supplier<RepositoriesService> repositoriesServiceSupplier) {
-//        RewriterShardContext.instantiateClient(client);
+//        RestSearchRewriterAction.instantiateQuerqyProcessor(querqyProcessor);
+//        TransportSearchRewriterAction.instantiateQuerqyProcessor(querqyProcessor);
+        RewriterShardContext.instantiateThreadPool(threadPool);
         pluginSettings.addSettingsUpdateConsumer(clusterService);
         return Arrays.asList(rewriterShardContexts, querqyProcessor);
     }
@@ -145,5 +140,9 @@ public class QuerqyPlugin extends Plugin implements SearchPlugin, ActionPlugin {
 //                Setting.Property.NodeScope));
         return pluginSettings.getAllSettings();
 
+    }
+
+    public static QuerqyProcessor getQueryProcessor(){
+        return querqyProcessor;
     }
 }
