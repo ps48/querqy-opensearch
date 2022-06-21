@@ -18,9 +18,12 @@
  */
 
 package querqy.opensearch.rewriterstore;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.opensearch.action.ActionRequestBuilder;
 import org.opensearch.client.OpenSearchClient;
 import org.opensearch.client.node.NodeClient;
+import org.opensearch.common.bytes.BytesArray;
 import org.opensearch.common.xcontent.*;
 import org.opensearch.rest.BaseRestHandler;
 import org.opensearch.rest.BytesRestResponse;
@@ -44,7 +47,7 @@ import static querqy.opensearch.rewriterstore.Constants.QUERQY_SEARCH_BASE_ROUTE
 
 public class RestSearchRewriterAction extends BaseRestHandler{
 
-    static QuerqyProcessor querqyProcessor;
+    private static final Logger LOGGER = LogManager.getLogger(TransportPutRewriterAction.class);
 
     @Override
     public String getName() {
@@ -59,7 +62,7 @@ public class RestSearchRewriterAction extends BaseRestHandler{
     }
 
     @Override
-    protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client) eiifccugvrlldtflkkfjgcefbbntjlfblluteetjhtgc
+    protected RestChannelConsumer prepareRequest(RestRequest request, NodeClient client)
     {
         final SearchRewriterRequestBuilder requestBuilder = createRequestBuilder(request, client);
 
@@ -81,13 +84,18 @@ public class RestSearchRewriterAction extends BaseRestHandler{
         }
 
 
-        final Map<String, Object> source = XContentHelper
-                .convertToMap(request.content(), false, XContentType.JSON).v2();
-
-//        final QuerqyQueryBuilder querqyQueryBuilder = QuerqyQueryBuilder.fromXContent(XContentHelper.createParser(NamedXContentRegistry.EMPTY, LoggingDeprecationHandler.INSTANCE, request.content(), XContentType.JSON),  QuerqyPlugin.getQueryProcessor());
+//        final Map<String, Object> source = XContentHelper
+//                .convertToMap(request.content(), false, XContentType.JSON).v2();
+//        final Map<String, Object> source1 = (Map<String, Object>) source.get("query");
+//        final Map<String, Object> source2 = (Map<String, Object>) source1.get("querqy");
+//        LOGGER.info("source request =====>:" +source.toString());
+//        LOGGER.info("source request =====> source1:" +source1.toString());
+//        LOGGER.info("source request =====> source2:" +source2.toString());
+//        BytesArray content = new BytesArray(source1.toString());
+//        XContentHelper.
 
         return new SearchRewriterRequestBuilder(client, SearchRewriterAction.INSTANCE,
-                new SearchRewriterRequest(searchParams, request));
+                new SearchRewriterRequest(searchParams, request.content()));
     }
 
 
@@ -99,11 +107,6 @@ public class RestSearchRewriterAction extends BaseRestHandler{
             super(client, action, request);
         }
     }
-
-
-//    public static void instantiateQuerqyProcessor(QuerqyProcessor querqyProcessor){
-//        TransportSearchRewriterAction.querqyProcessor = querqyProcessor;
-//    }
 
 
 }

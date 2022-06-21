@@ -83,6 +83,8 @@ public class TransportPutRewriterAction extends HandledTransportAction<PutRewrit
     private final Settings settings;
     private boolean mappingsVersionChecked = false;
     private final PluginSettings pluginSettings = PluginSettings.getInstance();
+    private String userStr;
+    private User user;
 
     @Inject
     public TransportPutRewriterAction(final TransportService transportService, final ActionFilters actionFilters,
@@ -97,6 +99,10 @@ public class TransportPutRewriterAction extends HandledTransportAction<PutRewrit
     @Override
     protected void doExecute(final Task task, final PutRewriterRequest request,
                              final ActionListener<PutRewriterResponse> listener) {
+
+
+        this.userStr = client.threadPool().getThreadContext().getTransient(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
+        this.user = User.parse(userStr);
 
         final IndicesAdminClient indicesClient = client.admin().indices();
 
@@ -253,12 +259,12 @@ public class TransportPutRewriterAction extends HandledTransportAction<PutRewrit
         IndexRequestBuilder indexRequestBuilder = null;
         SearchResponse response = null;
 
-        String userStr = client.threadPool().getThreadContext().getTransient(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
-        User user = User.parse(userStr);
+//        String userStr = client.threadPool().getThreadContext().getTransient(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
+//        User user = User.parse(userStr);
         LOGGER.info("access" +userStr+" "+ String.join(", ", UserAccessManager.getAllAccessInfo(user)));
         LOGGER.info("accessv2" + org.apache.logging.log4j.ThreadContext.get("user"));
-        LOGGER.info("accessv3" + convertWithStream(org.apache.logging.log4j.ThreadContext.getContext()));
-        LOGGER.info("accessv4" + convertWithStream(client.threadPool().getThreadContext().getHeaders()));
+//        LOGGER.info("accessv3" + convertWithStream(org.apache.logging.log4j.ThreadContext.getContext()));
+//        LOGGER.info("accessv4" + convertWithStream(client.threadPool().getThreadContext().getHeaders()));
 
 
         SearchRequest searchRequest = querqyObjectSearchRequest(request.getRewriterId(), user);

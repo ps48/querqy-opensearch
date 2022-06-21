@@ -127,9 +127,6 @@ public class QuerqyPlugin extends Plugin implements SearchPlugin, ActionPlugin {
                                                final NamedWriteableRegistry namedWriteableRegistry,
                                                IndexNameExpressionResolver indexNameExpressionResolver,
                                                Supplier<RepositoriesService> repositoriesServiceSupplier) {
-//        RestSearchRewriterAction.instantiateQuerqyProcessor(querqyProcessor);
-//        TransportSearchRewriterAction.instantiateQuerqyProcessor(querqyProcessor);
-        RewriterShardContext.instantiateThreadPool(threadPool);
         pluginSettings.addSettingsUpdateConsumer(clusterService);
         return Arrays.asList(rewriterShardContexts, querqyProcessor);
     }

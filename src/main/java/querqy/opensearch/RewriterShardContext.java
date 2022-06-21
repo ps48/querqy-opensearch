@@ -81,7 +81,6 @@ public class RewriterShardContext {
 
     final Cache<String, RewriterFactoryAndLogging> factories;
     final Client client;
-    static ThreadPool threadPool;
     final IndexService indexService;
     final ShardId shardId;
     private final PluginSettings pluginSettings = PluginSettings.getInstance();
@@ -137,7 +136,7 @@ public class RewriterShardContext {
 
             GetResponse response = null;
 
-            String userStr = threadPool.getThreadContext().getTransient(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
+            String userStr = client.threadPool().getThreadContext().getTransient(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
             User user = User.parse(userStr);
             LOGGER.info("access" + String.join(", ", UserAccessManager.getAllAccessInfo(user)));
 //            String userVal = threadPool.getThreadContext().getTransient("user");
@@ -235,7 +234,4 @@ public class RewriterShardContext {
         return searchRequest;
     }
 
-    public static void instantiateThreadPool(ThreadPool threadPool){
-        RewriterShardContext.threadPool = threadPool;
-    }
 }

@@ -22,22 +22,26 @@ package querqy.opensearch.rewriterstore;
 import org.opensearch.action.ActionRequest;
 import org.opensearch.action.ActionRequestValidationException;
 import org.opensearch.action.ValidateActions;
+import org.opensearch.common.ParseField;
+import org.opensearch.common.bytes.BytesArray;
+import org.opensearch.common.bytes.BytesReference;
 import org.opensearch.common.io.stream.StreamInput;
 import org.opensearch.common.io.stream.StreamOutput;
-import org.opensearch.common.xcontent.LoggingDeprecationHandler;
-import org.opensearch.common.xcontent.NamedXContentRegistry;
-import org.opensearch.common.xcontent.XContentHelper;
-import org.opensearch.common.xcontent.XContentType;
+import org.opensearch.common.util.ByteArray;
+import org.opensearch.common.xcontent.*;
 import org.opensearch.rest.RestRequest;
 import querqy.opensearch.QuerqyPlugin;
 import querqy.opensearch.query.QuerqyQueryBuilder;
 
 import java.io.IOException;
+import java.io.InputStream;
+
+import static org.opensearch.common.xcontent.DeprecationHandler.THROW_UNSUPPORTED_OPERATION;
 
 public class SearchRewriterRequest extends ActionRequest {
 
     private QuerqyQueryBuilder querqyQueryBuilder = null;
-    private String searchParams = "";
+    private String searchParams = null;
     private String ExceptionMessage = "";
 
     public SearchRewriterRequest(final StreamInput in) throws IOException {
@@ -46,13 +50,13 @@ public class SearchRewriterRequest extends ActionRequest {
         querqyQueryBuilder = new QuerqyQueryBuilder(in, QuerqyPlugin.getQueryProcessor());
     }
 
-    public SearchRewriterRequest(final String searchParams, final RestRequest request) {
+    public SearchRewriterRequest(final String searchParams, final BytesReference content) {
         super();
         this.searchParams = searchParams;
         try {
-            this.querqyQueryBuilder = QuerqyQueryBuilder.fromXContent(XContentHelper.createParser(NamedXContentRegistry.EMPTY,
-                    LoggingDeprecationHandler.INSTANCE, request.content(), XContentType.JSON),
-                    QuerqyPlugin.getQueryProcessor());
+            XContentParser parser = XContentHelper.createParser(NamedXContentRegistry.EMPTY,
+                    LoggingDeprecationHandler.INSTANCE, content, XContentType.JSON);
+            this.querqyQueryBuilder = QuerqyQueryBuilder.fromXContent(parser, QuerqyPlugin.getQueryProcessor());
         }
         catch (Exception e) {
             ExceptionMessage = e.getMessage();

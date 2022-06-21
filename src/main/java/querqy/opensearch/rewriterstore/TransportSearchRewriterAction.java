@@ -72,7 +72,8 @@ public class TransportSearchRewriterAction extends HandledTransportAction<Search
     private final Settings settings;
     private boolean mappingsVersionChecked = false;
     private final PluginSettings pluginSettings = PluginSettings.getInstance();
-//    static QuerqyProcessor querqyProcessor;
+    private String userStr;
+    private User user;
 
     @Inject
     public TransportSearchRewriterAction(final TransportService transportService, final ActionFilters actionFilters,
@@ -87,14 +88,10 @@ public class TransportSearchRewriterAction extends HandledTransportAction<Search
     @Override
     protected void doExecute(final Task task, final SearchRewriterRequest request,
                              final ActionListener<SearchRewriterResponse> listener) {
-////        listener.onResponse(new SearchRewriterResponse((String) request.getContent().get("querqy")));
-//
-//        QuerqyQueryBuilder querqyQuery = new QuerqyQueryBuilder(querqyProcessor);
-//        querqyQuery.setRewriters(Collections.singletonList(new Rewriter("common_rules")));
-//        querqyQuery.setMatchingQuery(new MatchingQuery("request"));
-//        querqyQuery.setQueryFieldsAndBoostings(Collections.singletonList("message"));
-////        querqyQuery.setMinimumShouldMatch("1");
-//
+
+        this.userStr = client.threadPool().getThreadContext().getTransient(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
+        this.user = User.parse(userStr);
+
         final SearchRequestBuilder searchRequestBuilder = client.prepareSearch(request.getSearchParams());
         searchRequestBuilder.setQuery(request.getQuerqyQueryBuilder());
 
@@ -120,13 +117,4 @@ public class TransportSearchRewriterAction extends HandledTransportAction<Search
             e.printStackTrace();
         }
     }
-
-//    public static void instantiateQuerqyProcessor(QuerqyProcessor querqyProcessor){
-//        TransportSearchRewriterAction.querqyProcessor = querqyProcessor;
-//    }
-
-
-
-
-
 }
