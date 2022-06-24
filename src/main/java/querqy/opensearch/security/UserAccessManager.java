@@ -110,15 +110,6 @@ public class UserAccessManager {
         }
     }
 
-//    public static String getUserTenant(User user) {
-//        try{
-//            return user.getRequestedTenant();
-//        }
-//        catch (NullPointerException e) {
-//            return DEFAULT_TENANT;
-//        }
-//    }
-
     /**
      * Get all user access info from user object.
      */
@@ -168,7 +159,7 @@ public class UserAccessManager {
     /**
      * validate if user has access based on given access list
      */
-    public Boolean doesUserHasAccess(User user, String tenant, List<String> access) {
+    public static Boolean doesUserHasAccess(User user, String tenant, List<String> access) {
         if (user == null) { // Security is disabled
             return true;
         }
@@ -198,11 +189,11 @@ public class UserAccessManager {
         return isAdminUser(user);
     }
 
-    private Boolean canAdminViewAllItems(User user) {
+    private static Boolean canAdminViewAllItems(User user) {
         return pluginSettings.adminAccess == PluginSettings.AdminAccess.AllObservabilityObjects && isAdminUser(user);
     }
 
-    private Boolean isAdminUser(User user) {
+    private static Boolean isAdminUser(User user) {
         return user.getRoles().contains(ALL_ACCESS_ROLE);
     }
 

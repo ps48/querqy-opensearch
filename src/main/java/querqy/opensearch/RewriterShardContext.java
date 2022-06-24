@@ -45,19 +45,15 @@ import org.opensearch.threadpool.ThreadPool;
 import querqy.opensearch.rewriterstore.LoadRewriterConfig;
 import querqy.opensearch.rewriterstore.RewriterConfigMapping;
 import querqy.opensearch.security.UserAccessManager;
-import querqy.opensearch.settings.PluginSettings;
+//import querqy.opensearch.settings.PluginSettings;
 import querqy.rewrite.RewriteChain;
 import querqy.rewrite.RewriterFactory;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
+import static org.opensearch.commons.ConfigConstants.INJECTED_USER;
 import static org.opensearch.commons.ConfigConstants.OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT;
 import static querqy.opensearch.rewriterstore.Constants.QUERQY_INDEX_NAME;
 import static querqy.opensearch.rewriterstore.RewriterConfigMapping.*;
@@ -67,23 +63,27 @@ public class RewriterShardContext {
 
     public static final Setting<TimeValue> CACHE_EXPIRE_AFTER_WRITE = Setting.timeSetting(
             "querqy.caches.rewriter.expire_after_write",
-            TimeValue.timeValueNanos(0), // do not expire by default
-            TimeValue.timeValueNanos(0),
+            TimeValue.timeValueNanos(1), // do not expire by default
+            TimeValue.timeValueNanos(1),
             Setting.Property.NodeScope);
 
     public static final Setting<TimeValue> CACHE_EXPIRE_AFTER_READ = Setting.timeSetting(
             "querqy.caches.rewriter.expire_after_read",
-            TimeValue.timeValueNanos(0), // do not expire by default
-            TimeValue.timeValueNanos(0),
+            TimeValue.timeValueNanos(1), // do not expire by default
+            TimeValue.timeValueNanos(1),
             Setting.Property.NodeScope);
 
     private static final Logger LOGGER = LogManager.getLogger(RewriterShardContext.class);
 
-    final Cache<String, RewriterFactoryAndLogging> factories;
+    final Cache<List<String>, RewriterFactoryAndLogging> factories;
     final Client client;
     final IndexService indexService;
     final ShardId shardId;
-    private final PluginSettings pluginSettings = PluginSettings.getInstance();
+//    private final PluginSettings pluginSettings = PluginSettings.getInstance();
+
+    public List<String> getFactoryId (String rewriterId){
+        return Collections.unmodifiableList(Arrays.asList(client.threadPool().getThreadContext().getHeader("_opendistro_security_user_header"), rewriterId));
+    }
 
     public RewriterShardContext(final ShardId shardId, final IndexService indexService, final Settings settings,
                                 final Client client) {
@@ -99,8 +99,12 @@ public class RewriterShardContext {
         final Set<String> loggingEnabledRewriters = new HashSet<>();
 
         for (final String id : rewriterIds) {
-
-            RewriterFactoryAndLogging factoryAndLogging = factories.get(id);
+            try {
+                client.prepareGet(QUERQY_INDEX_NAME, null, id).setFetchSource(false).execute().get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new OpenSearchException("Could not load rewriter " + id, e);
+            }
+            RewriterFactoryAndLogging factoryAndLogging = factories.get(getFactoryId(id));
             if (factoryAndLogging == null) {
                 factoryAndLogging = loadFactory(id, false);
             }
@@ -115,7 +119,7 @@ public class RewriterShardContext {
     }
 
     public void clearRewriter(final String rewriterId) {
-        factories.invalidate(rewriterId);
+        factories.invalidate(getFactoryId(rewriterId));
     }
 
     public void clearRewriters() {
@@ -123,47 +127,31 @@ public class RewriterShardContext {
     }
 
     public void reloadRewriter(final String rewriterId) {
-        if (factories.get(rewriterId) != null) {
+        if (factories.get(getFactoryId(rewriterId)) != null) {
             loadFactory(rewriterId, true);
         }
     }
 
     public synchronized RewriterFactoryAndLogging loadFactory(final String rewriterId, final boolean forceLoad) {
 
-        RewriterFactoryAndLogging factoryAndLogging = factories.get(rewriterId);
+//        String userStr = client.threadPool().getThreadContext().getTransient(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
+//        String injUser = client.threadPool().getThreadContext().getTransient(INJECTED_USER);
+//        String userHeader = client.threadPool().getThreadContext().getHeader("_opendistro_security_user_header");
+//        Map<String, String> allHeader = client.threadPool().getThreadContext().getHeaders();
+//        User user = User.parse(userStr);
+//        LOGGER.info("access RSC: " +userStr+" "+ injUser+" "+ userHeader );
+//        LOGGER.info("accessv2 RSC: " + org.apache.logging.log4j.ThreadContext.get("user"));
+//        List<String> factoryId = Collections.unmodifiableList(Arrays.asList(userHeader, rewriterId));
+        RewriterFactoryAndLogging factoryAndLogging = factories.get(getFactoryId(rewriterId));
 
         if (forceLoad || (factoryAndLogging == null)) {
 
-            GetResponse response = null;
+            final GetResponse response;
 
-            String userStr = client.threadPool().getThreadContext().getTransient(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
-            User user = User.parse(userStr);
-            LOGGER.info("access" + String.join(", ", UserAccessManager.getAllAccessInfo(user)));
-//            String userVal = threadPool.getThreadContext().getTransient("user");
-//            LOGGER.info("access" + userVal);
-            LOGGER.info("accessv2" + org.apache.logging.log4j.ThreadContext.get("user"));
-
-            SearchRequest searchRequest = querqyObjectSearchRequest(rewriterId, user);
-            ActionFuture<SearchResponse> actionFuture = client.search(searchRequest);
-            SearchResponse queryResponse = actionFuture.actionGet(pluginSettings.operationTimeoutMs);
-            SearchHits hits = queryResponse.getHits();
-            long totalHits = hits.getTotalHits().value;
-            String querqyObjectId = null;
-            if (totalHits == 0){
-                LOGGER.info("Didn't find matching rewrite rule in the index.");
-                throw new OpenSearchException("Could not load rewriter " + rewriterId);
-            }
-            else if (totalHits!= 1){
-                LOGGER.error("More than one matching document found, for a rule rewriter");
-            }
-            else{
-                querqyObjectId = hits.getAt(0).getId();;
-                LOGGER.info("fetched queried querqy object with Id: "+querqyObjectId);
-                try {
-                    response = client.prepareGet(QUERQY_INDEX_NAME, null, querqyObjectId).execute().get();
-                } catch (InterruptedException | ExecutionException e) {
-                    throw new OpenSearchException("Could not load rewriter " + rewriterId, e);
-                }
+            try {
+                response = client.prepareGet(QUERQY_INDEX_NAME, null, rewriterId).execute().get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new OpenSearchException("Could not load rewriter " + rewriterId, e);
             }
 
             final Map<String, Object> source = response.getSource();
@@ -197,7 +185,7 @@ public class RewriterShardContext {
             final RewriterFactory factory = OpenSearchRewriterFactory.loadConfiguredInstance(loadConfig)
                     .createRewriterFactory(indexService.getShard(shardId.id()));
             factoryAndLogging = new RewriterFactoryAndLogging(factory, loggingEnabled);
-            factories.put(rewriterId, factoryAndLogging);
+            factories.put((getFactoryId(rewriterId)), factoryAndLogging);
 
 
         }
@@ -217,21 +205,21 @@ public class RewriterShardContext {
         }
     }
 
-    private SearchRequest querqyObjectSearchRequest(String rewriter_name, User user){
-        BoolQueryBuilder query = QueryBuilders.boolQuery();
-        query.filter(QueryBuilders.termsQuery(PROP_REWRITER_NAME,rewriter_name));
-        query.filter(QueryBuilders.termsQuery(PROP_TENANT, UserAccessManager.getUserTenant(user)));
-        if (!UserAccessManager.getAllAccessInfo(user).isEmpty()) {
-            query.filter(QueryBuilders.termsQuery(PROP_ACCESS, UserAccessManager.getAllAccessInfo(user)));
-        }
-
-        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
-        sourceBuilder.timeout(new TimeValue(pluginSettings.operationTimeoutMs, TimeUnit.MILLISECONDS)).size(1);
-        SearchRequest searchRequest = new SearchRequest();
-        searchRequest.indices(QUERQY_INDEX_NAME).source(sourceBuilder);
-
-        sourceBuilder.query(query);
-        return searchRequest;
-    }
+//    private SearchRequest querqyObjectSearchRequest(String rewriter_name, User user){
+//        BoolQueryBuilder query = QueryBuilders.boolQuery();
+//        query.filter(QueryBuilders.termsQuery(PROP_REWRITER_NAME,rewriter_name));
+//        query.filter(QueryBuilders.termsQuery(PROP_TENANT, UserAccessManager.getUserTenant(user)));
+//        if (!UserAccessManager.getAllAccessInfo(user).isEmpty()) {
+//            query.filter(QueryBuilders.termsQuery(PROP_ACCESS, UserAccessManager.getAllAccessInfo(user)));
+//        }
+//
+//        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+//        sourceBuilder.timeout(new TimeValue(pluginSettings.operationTimeoutMs, TimeUnit.MILLISECONDS)).size(1);
+//        SearchRequest searchRequest = new SearchRequest();
+//        searchRequest.indices(QUERQY_INDEX_NAME).source(sourceBuilder);
+//
+//        sourceBuilder.query(query);
+//        return searchRequest;
+//    }
 
 }

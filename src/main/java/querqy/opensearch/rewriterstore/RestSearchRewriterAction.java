@@ -83,17 +83,6 @@ public class RestSearchRewriterAction extends BaseRestHandler{
             throw new IllegalArgumentException("SearchRewriterRequestBuilder: search parameters must not be empty");
         }
 
-
-//        final Map<String, Object> source = XContentHelper
-//                .convertToMap(request.content(), false, XContentType.JSON).v2();
-//        final Map<String, Object> source1 = (Map<String, Object>) source.get("query");
-//        final Map<String, Object> source2 = (Map<String, Object>) source1.get("querqy");
-//        LOGGER.info("source request =====>:" +source.toString());
-//        LOGGER.info("source request =====> source1:" +source1.toString());
-//        LOGGER.info("source request =====> source2:" +source2.toString());
-//        BytesArray content = new BytesArray(source1.toString());
-//        XContentHelper.
-
         return new SearchRewriterRequestBuilder(client, SearchRewriterAction.INSTANCE,
                 new SearchRewriterRequest(searchParams, request.content()));
     }

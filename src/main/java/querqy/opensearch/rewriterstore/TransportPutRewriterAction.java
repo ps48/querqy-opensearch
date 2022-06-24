@@ -103,6 +103,7 @@ public class TransportPutRewriterAction extends HandledTransportAction<PutRewrit
 
         this.userStr = client.threadPool().getThreadContext().getTransient(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
         this.user = User.parse(userStr);
+        UserAccessManager.validateUser(user);
 
         final IndicesAdminClient indicesClient = client.admin().indices();
 
@@ -246,18 +247,12 @@ public class TransportPutRewriterAction extends HandledTransportAction<PutRewrit
         ;
     }
 
-    public String convertWithStream(Map<String, String> map) {
-        String mapAsString = map.keySet().stream()
-                .map(key -> key + "=" + map.get(key))
-                .collect(Collectors.joining(", ", "{", "}"));
-        return mapAsString;
-    }
 
     private IndexRequest buildIndexRequest(final Task parentTask, final PutRewriterRequest request) throws IOException {
 
-        String querqyObjectId = null;
-        IndexRequestBuilder indexRequestBuilder = null;
-        SearchResponse response = null;
+//        String querqyObjectId = null;
+//        IndexRequestBuilder indexRequestBuilder = null;
+//        SearchResponse response = null;
 
 //        String userStr = client.threadPool().getThreadContext().getTransient(OPENSEARCH_SECURITY_USER_INFO_THREAD_CONTEXT);
 //        User user = User.parse(userStr);
@@ -267,28 +262,9 @@ public class TransportPutRewriterAction extends HandledTransportAction<PutRewrit
 //        LOGGER.info("accessv4" + convertWithStream(client.threadPool().getThreadContext().getHeaders()));
 
 
-        SearchRequest searchRequest = querqyObjectSearchRequest(request.getRewriterId(), user);
-        ActionFuture<SearchResponse> actionFuture = client.search(searchRequest);
-        response =  actionFuture.actionGet(pluginSettings.operationTimeoutMs);
-        SearchHits hits = response.getHits();
-        long totalHits = hits.getTotalHits().value;
 
-        if (totalHits == 0){
-            LOGGER.info("Didn't find matching rewrite rule in the index. " +
-                    "Continue to create a new rule for: "+request.getRewriterId());
-            indexRequestBuilder = client.prepareIndex(QUERQY_INDEX_NAME, null);
-        }
-        else if (totalHits!= 1){
-            LOGGER.error("More than one matching document found, for a rule rewriter");
-        }
-        else{
-            querqyObjectId = hits.getAt(0).getId();;
-            LOGGER.info("fetched queried querqy object with Id: "+querqyObjectId);
-            indexRequestBuilder = client.prepareIndex(QUERQY_INDEX_NAME, null, querqyObjectId);
-        }
-        LOGGER.info("Saved rewriter {}",response);
-
-        IndexRequest indexRequest = indexRequestBuilder.setCreate(false)
+        final IndexRequest indexRequest = client.prepareIndex(QUERQY_INDEX_NAME, null, request.getRewriterId())
+                .setCreate(false)
                 .setSource(RewriterConfigMapping.toLuceneSource(request.getContent(), request.getRewriterId(),
                         UserAccessManager.getUserTenant(user), UserAccessManager.getAllAccessInfo(user)))
                 .setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE)
@@ -305,22 +281,22 @@ public class TransportPutRewriterAction extends HandledTransportAction<PutRewrit
         return scanner.hasNext() ? scanner.next() : "";
     }
 
-    private SearchRequest querqyObjectSearchRequest(String rewriter_name, User user){
-        BoolQueryBuilder query = QueryBuilders.boolQuery();
-        query.filter(QueryBuilders.termsQuery(PROP_REWRITER_NAME,rewriter_name));
-        query.filter(QueryBuilders.termsQuery(PROP_TENANT, UserAccessManager.getUserTenant(user)));
-        if (!UserAccessManager.getAllAccessInfo(user).isEmpty()) {
-            query.filter(QueryBuilders.termsQuery(PROP_ACCESS, UserAccessManager.getAllAccessInfo(user)));
-        }
-
-        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
-        sourceBuilder.timeout(new TimeValue(pluginSettings.operationTimeoutMs, TimeUnit.MILLISECONDS)).size(1);
-        SearchRequest searchRequest = new SearchRequest();
-        searchRequest.indices(QUERQY_INDEX_NAME).source(sourceBuilder);
-
-        sourceBuilder.query(query);
-        return searchRequest;
-    }
+//    private SearchRequest querqyObjectSearchRequest(String rewriter_name, User user){
+//        BoolQueryBuilder query = QueryBuilders.boolQuery();
+//        query.filter(QueryBuilders.termsQuery(PROP_REWRITER_NAME,rewriter_name));
+//        query.filter(QueryBuilders.termsQuery(PROP_TENANT, UserAccessManager.getUserTenant(user)));
+//        if (!UserAccessManager.getAllAccessInfo(user).isEmpty()) {
+//            query.filter(QueryBuilders.termsQuery(PROP_ACCESS, UserAccessManager.getAllAccessInfo(user)));
+//        }
+//
+//        SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
+//        sourceBuilder.timeout(new TimeValue(pluginSettings.operationTimeoutMs, TimeUnit.MILLISECONDS)).size(1);
+//        SearchRequest searchRequest = new SearchRequest();
+//        searchRequest.indices(QUERQY_INDEX_NAME).source(sourceBuilder);
+//
+//        sourceBuilder.query(query);
+//        return searchRequest;
+//    }
 
 
 
