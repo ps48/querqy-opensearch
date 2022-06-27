@@ -54,6 +54,7 @@ public class QuerqyQueryBuilder extends AbstractQueryBuilder<QuerqyQueryBuilder>
     private static final ParseField FIELD_GENERATED = new ParseField("generated");
 
     private static final ParseField FIELD_TIE_BREAKER = new ParseField("tie_breaker");
+    private static final ParseField FIELD_MULTI_MATCH_TIE_BREAKER = new ParseField("multi_match_tie_breaker");
     private static final ParseField FIELD_MINIMUM_SHOULD_MATCH = new ParseField("minimum_should_match");
     private static final ParseField FIELD_QUERY_FIELDS = new ParseField("query_fields");
     private static final ParseField FIELD_FIELD_BOOST_MODEL = new ParseField("field_boost_model");
@@ -67,6 +68,7 @@ public class QuerqyQueryBuilder extends AbstractQueryBuilder<QuerqyQueryBuilder>
     static {
         declareStandardFields(PARSER);
         PARSER.declareFloat(QuerqyQueryBuilder::setTieBreaker, FIELD_TIE_BREAKER);
+        PARSER.declareFloat(QuerqyQueryBuilder::setMultiMatchTiebreaker, FIELD_MULTI_MATCH_TIE_BREAKER);
         PARSER.declareString(QuerqyQueryBuilder::setMinimumShouldMatch, FIELD_MINIMUM_SHOULD_MATCH);
         PARSER.declareString(QuerqyQueryBuilder::setFieldBoostModel, FIELD_FIELD_BOOST_MODEL);
         PARSER.declareStringArray(QuerqyQueryBuilder::setQueryFieldsAndBoostings, FIELD_QUERY_FIELDS);
@@ -79,6 +81,7 @@ public class QuerqyQueryBuilder extends AbstractQueryBuilder<QuerqyQueryBuilder>
 
 
     private Float tieBreaker;
+    private Float multiMatchTiebreaker;
     private String minimumShouldMatch;
     private Map<String, Float> queryFieldsAndBoostings;
     private List<String> queryFields;
@@ -116,6 +119,7 @@ public class QuerqyQueryBuilder extends AbstractQueryBuilder<QuerqyQueryBuilder>
         setQueryFieldsAndBoostings(queryFields);
         minimumShouldMatch = in.readOptionalString();
         tieBreaker = in.readOptionalFloat();
+        multiMatchTiebreaker = in.readOptionalFloat();
 
         final String strFieldBoostModel = in.readOptionalString();
         fieldBoostModel = strFieldBoostModel == null
@@ -168,6 +172,10 @@ public class QuerqyQueryBuilder extends AbstractQueryBuilder<QuerqyQueryBuilder>
 
         if (tieBreaker != null) {
             builder.field(FIELD_TIE_BREAKER.getPreferredName(), tieBreaker);
+        }
+
+        if (multiMatchTiebreaker != null) {
+            builder.field(FIELD_MULTI_MATCH_TIE_BREAKER.getPreferredName(), multiMatchTiebreaker);
         }
 
         if (fieldBoostModel != null) {
@@ -317,6 +325,15 @@ public class QuerqyQueryBuilder extends AbstractQueryBuilder<QuerqyQueryBuilder>
     public Optional<Float> getTieBreaker() {
         return Optional.ofNullable(tieBreaker);
     }
+
+    public void setMultiMatchTiebreaker(final float tie) {
+        this.multiMatchTiebreaker = tie;
+    }
+
+    public Optional<Float> getMultiMatchTiebreaker() {
+        return Optional.ofNullable(multiMatchTiebreaker);
+    }
+
 
     public String getMinimumShouldMatch() {
         return minimumShouldMatch;

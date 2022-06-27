@@ -28,6 +28,7 @@ import querqy.rewrite.commonrules.QuerqyParserFactory;
 import querqy.rewrite.commonrules.WhiteSpaceQuerqyParserFactory;
 import querqy.rewrite.commonrules.select.ExpressionCriteriaSelectionStrategyFactory;
 import querqy.rewrite.commonrules.select.SelectionStrategyFactory;
+import querqy.rewrite.commonrules.model.BoostInstruction.BoostMethod;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -52,6 +53,7 @@ public class SimpleCommonRulesRewriterFactory extends OpenSearchRewriterFactory 
     public void configure(final Map<String, Object> config) {
         final boolean ignoreCase = ConfigUtils.getArg(config, "ignoreCase", true);
         final boolean allowBooleanInput = ConfigUtils.getArg(config, "allowBooleanInput", false);
+        final BoostMethod boostMethod = readBoostMethod(config);
 
         final QuerqyParserFactory querqyParser = ConfigUtils
                 .getInstanceFromArg(config, "querqyParser", DEFAULT_RHS_QUERY_PARSER);
@@ -63,8 +65,8 @@ public class SimpleCommonRulesRewriterFactory extends OpenSearchRewriterFactory 
 
         try {
             delegate = new querqy.rewrite.commonrules.SimpleCommonRulesRewriterFactory(rewriterId,
-                    new StringReader(rules), allowBooleanInput, querqyParser, ignoreCase, selectionStrategyFactories,
-                    DEFAULT_SELECTION_STRATEGY_FACTORY, false);
+                    new StringReader(rules), allowBooleanInput, boostMethod, querqyParser, ignoreCase,
+                    selectionStrategyFactories, DEFAULT_SELECTION_STRATEGY_FACTORY, false);
         } catch (final IOException e) {
             throw new OpenSearchException(e);
         }
@@ -88,10 +90,12 @@ public class SimpleCommonRulesRewriterFactory extends OpenSearchRewriterFactory 
 
         final boolean ignoreCase = ConfigUtils.getArg(config, "ignoreCase", true);
         final boolean allowBooleanInput = ConfigUtils.getArg(config, "allowBooleanInput", false);
+        final BoostMethod boostMethod = readBoostMethod(config);
+
         try {
             new querqy.rewrite.commonrules.SimpleCommonRulesRewriterFactory(rewriterId,
-                    new StringReader(rules), allowBooleanInput, querqyParser, ignoreCase, Collections.emptyMap(),
-                    DEFAULT_SELECTION_STRATEGY_FACTORY, false);
+                    new StringReader(rules), allowBooleanInput, boostMethod, querqyParser, ignoreCase,
+                    Collections.emptyMap(), DEFAULT_SELECTION_STRATEGY_FACTORY, false);
         } catch (final IOException e) {
             return Collections.singletonList("Cannot create rewriter: " + e.getMessage());
         }
@@ -104,5 +108,9 @@ public class SimpleCommonRulesRewriterFactory extends OpenSearchRewriterFactory 
         return delegate;
     }
 
+    protected BoostMethod readBoostMethod(final Map<String, Object> config) {
+        final String boostMethodConfig = ConfigUtils.getArg(config, "boostMethod", BoostMethod.ADDITIVE.name());
+        return BoostMethod.valueOf(boostMethodConfig.toUpperCase());
+    }
 
 }
