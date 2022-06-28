@@ -224,7 +224,8 @@ public class DismaxSearchEngineRequestAdapter implements LuceneSearchEngineReque
 
     @Override
     public Optional<Float> getMultiMatchTiebreaker() {
-        return queryBuilder.getMultiMatchTiebreaker();
+//        return queryBuilder.getMultiMatchTiebreaker();
+        return Optional.empty();
     }
 
     /**

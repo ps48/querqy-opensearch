@@ -122,7 +122,14 @@ public class RewriterShardContext {
             final GetResponse response;
 
             //                response = client.prepareGet(QUERQY_INDEX_NAME, null, rewriterId).execute().get();
-            response = client.get(Requests.getRequest(QUERQY_INDEX_NAME).id(rewriterId)).actionGet();
+//            response = client.get(Requests.getRequest(QUERQY_INDEX_NAME).id(rewriterId)).actionGet();
+
+            try {
+                response = client.prepareGet(QUERQY_INDEX_NAME, rewriterId).execute().get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new OpenSearchException("Could not load rewriter " + rewriterId, e);
+            }
+
 
             final Map<String, Object> source = response.getSource();
 

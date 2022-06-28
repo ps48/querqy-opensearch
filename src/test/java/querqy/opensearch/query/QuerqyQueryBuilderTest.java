@@ -135,6 +135,8 @@ public class QuerqyQueryBuilderTest extends AbstractQueryTestCase<QuerqyQueryBui
         final QuerqyQueryBuilder readQuerqyQueryBuilder = new QuerqyQueryBuilder(out.bytes().streamInput(),
                 querqyProcessor);
 
+        System.out.println(writeQuerqyQueryBuilder +"----->"+ readQuerqyQueryBuilder);
+
         assertEqualBuilders(writeQuerqyQueryBuilder, readQuerqyQueryBuilder);
 
     }

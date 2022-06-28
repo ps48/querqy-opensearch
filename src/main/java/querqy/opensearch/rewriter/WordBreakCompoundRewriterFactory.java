@@ -21,7 +21,7 @@ package querqy.opensearch.rewriter;
 
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.spell.WordBreakSpellChecker;
-import org.opensearch.index.engine.Engine;
+import querqy.opensearch.DismaxSearchEngineRequestAdapter;
 import org.opensearch.index.shard.IndexShard;
 import querqy.lucene.contrib.rewrite.wordbreak.*;
 import querqy.opensearch.ConfigUtils;
@@ -108,9 +108,7 @@ public class WordBreakCompoundRewriterFactory extends OpenSearchRewriterFactory 
         spellChecker.setMaxEvaluations(100);
         compounder = new SpellCheckerCompounder(spellChecker, dictionaryField, lowerCaseInput);
 
-        final Morphology morphology = morphologyProvider.get(String.valueOf(ConfigUtils.getStringArg(config, "morphology")))
-                .orElse(MorphologyProvider.DEFAULT);
-
+        final Morphology morphology = morphologyProvider.get(ConfigUtils.getStringArg(config, "morphology").orElse("default")).get();
         wordBreaker = new MorphologicalWordBreaker(morphology, dictionaryField, lowerCaseInput, minSuggestionFreq,
                 minBreakLength, MAX_EVALUATIONS);
 
@@ -138,7 +136,7 @@ public class WordBreakCompoundRewriterFactory extends OpenSearchRewriterFactory 
         }
 
         ConfigUtils.getStringArg(config, "morphology").ifPresent(morphologyName -> {
-            if (morphologyProvider.exists(morphologyName)) {
+            if (!morphologyProvider.exists(morphologyName)) {
                 errors.add("Unknown morphology: " + morphologyName);
             }
         });
@@ -156,7 +154,8 @@ public class WordBreakCompoundRewriterFactory extends OpenSearchRewriterFactory 
                                                 final SearchEngineRequestAdapter searchEngineRequestAdapter) {
 
 
-                return new WordBreakCompoundRewriter(wordBreaker, compounder, getShardIndexReader(indexShard),
+                return new WordBreakCompoundRewriter(wordBreaker, compounder,
+                        getShardIndexReader((DismaxSearchEngineRequestAdapter) searchEngineRequestAdapter),
                         lowerCaseInput, alwaysAddReverseCompounds, reverseCompoundTriggerWords, maxDecompoundExpansions,
                         verifyDecompoundCollation, protectedWords);
 
@@ -203,11 +202,8 @@ public class WordBreakCompoundRewriterFactory extends OpenSearchRewriterFactory 
         return verifyDecompoundCollation;
     }
 
-    private IndexReader getShardIndexReader(final IndexShard indexShard) {
-
-        try (Engine.Searcher searcher = indexShard.acquireSearcher("WordBreakCompoundRewriter")) {
-            return searcher.getTopReaderContext().reader();
-        }
+    private IndexReader getShardIndexReader(final DismaxSearchEngineRequestAdapter searchEngineRequestAdapter) {
+        return searchEngineRequestAdapter.getSearchExecutionContext().searcher().getTopReaderContext().reader();
     }
 
     public SpellCheckerCompounder getCompounder() {
