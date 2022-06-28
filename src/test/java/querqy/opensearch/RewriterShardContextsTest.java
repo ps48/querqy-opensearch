@@ -49,7 +49,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
-@OpenSearchIntegTestCase.ClusterScope(scope =  SUITE)
+@OpenSearchIntegTestCase.ClusterScope(scope = SUITE, supportsDedicatedMasters = false, numClientNodes = 1, minNumDataNodes = 4,
+        maxNumDataNodes = 6)
 public class RewriterShardContextsTest extends OpenSearchIntegTestCase {
 
     private static final int NUM_DOT_QUERY_REPLICAS = 1;
@@ -123,10 +124,9 @@ public class RewriterShardContextsTest extends OpenSearchIntegTestCase {
         } catch (final ExecutionException e) {
 
             final Throwable cause1 = e.getCause();
-            System.out.println("CAUSE1 here -----------------------> #############"+e.getCause()+"______________________>------------"+e.getCause().getCause()+"______________________>------------"+e.getCause().getCause().getCause());
             assertTrue(cause1 instanceof RemoteTransportException);
             final Throwable cause2 = cause1.getCause();
-            assertTrue(cause2 instanceof ResourceNotFoundException);
+            assertTrue(cause2 instanceof SearchPhaseExecutionException);
             final Throwable cause3 = cause2.getCause();
             assertTrue(cause3 instanceof ResourceNotFoundException);
             assertEquals("Rewriter not found: r2", cause3.getMessage());
