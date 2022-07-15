@@ -76,7 +76,7 @@ dependencies {
     compile('org.querqy:querqy-lucene:5.1.lucene810.0') {
         exclude group: 'com.fasterxml.jackson.core', module: 'jackson-databind'
     }
-    compile group: 'org.mockito', name: 'mockito-core', version: '3.12.4'
+    implementation group: 'org.mockito', name: 'mockito-core', version: '2.22.0'
     compile('com.fasterxml.jackson.core:jackson-databind')
     compile('com.jayway.jsonpath:json-path:2.4.0')
 
@@ -102,6 +102,7 @@ jacocoTestReport {
 configurations.all {
     resolutionStrategy.force 'junit:junit:4.13.2'
     resolutionStrategy.force'com.fasterxml.jackson.core:jackson-databind:2.12.6'
+    resolutionStrategy.force'org.mockito:mockito-core:2.22.0'
 }
 
 
