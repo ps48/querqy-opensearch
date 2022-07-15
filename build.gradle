@@ -76,7 +76,7 @@ dependencies {
     compile('org.querqy:querqy-lucene:5.1.lucene810.0') {
         exclude group: 'com.fasterxml.jackson.core', module: 'jackson-databind'
     }
-
+    compile group: 'org.mockito', name: 'mockito-core', version: '3.12.4'
     compile('com.fasterxml.jackson.core:jackson-databind')
     compile('com.jayway.jsonpath:json-path:2.4.0')
 
