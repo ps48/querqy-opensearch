@@ -10,9 +10,9 @@ jobs:
     strategy:
       matrix:
         java:
-          - 8
-          - 11
-          - 14
+          - 8.0.332+9
+          - 11.0.15+10
+          
 
     runs-on: ubuntu-latest
 
