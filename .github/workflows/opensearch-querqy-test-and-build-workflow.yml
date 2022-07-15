@@ -10,7 +10,7 @@ jobs:
     strategy:
       matrix:
         java:
-          - 8
+          - 8.0.282+8
           - 11
           - 14
 
