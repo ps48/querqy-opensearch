@@ -57,10 +57,12 @@ import querqy.opensearch.rewriterstore.NodesReloadRewriterAction;
 import querqy.opensearch.rewriterstore.RestDeleteRewriterAction;
 import querqy.opensearch.rewriterstore.RestPutRewriterAction;
 import querqy.opensearch.rewriterstore.PutRewriterAction;
+import querqy.opensearch.rewriterstore.SearchRewriterAction;
 import querqy.opensearch.rewriterstore.TransportDeleteRewriterAction;
 import querqy.opensearch.rewriterstore.TransportNodesClearRewriterCacheAction;
 import querqy.opensearch.rewriterstore.TransportNodesReloadRewriterAction;
 import querqy.opensearch.rewriterstore.TransportPutRewriterAction;
+import querqy.opensearch.rewriterstore.TransportSearchRewriterAction;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -117,7 +119,8 @@ public class QuerqyPlugin extends Plugin implements SearchPlugin, ActionPlugin {
                 new ActionHandler<>(NodesReloadRewriterAction.INSTANCE, TransportNodesReloadRewriterAction.class),
                 new ActionHandler<>(DeleteRewriterAction.INSTANCE, TransportDeleteRewriterAction.class),
                 new ActionHandler<>(NodesClearRewriterCacheAction.INSTANCE, TransportNodesClearRewriterCacheAction
-                        .class)
+                        .class),
+                new ActionHandler<>(SearchRewriterAction.INSTANCE, TransportSearchRewriterAction.class)
 
         ));
     }
