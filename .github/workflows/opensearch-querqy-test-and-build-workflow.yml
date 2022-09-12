@@ -3,7 +3,7 @@ name: Test and Build OpenSearch Querqy Plugin
 on: [pull_request, push]
 
 env:
-  OPENSEARCH_VERSION: '1.3.3'
+  OPENSEARCH_VERSION: '2.2.1'
 
 jobs:
   build:
