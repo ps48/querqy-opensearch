@@ -23,6 +23,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.opensearch.OpenSearchException;
 import org.opensearch.ResourceNotFoundException;
+import org.opensearch.action.admin.indices.get.GetIndexRequest;
 import org.opensearch.action.get.GetResponse;
 import org.opensearch.client.Client;
 import org.opensearch.common.cache.Cache;
@@ -84,6 +85,12 @@ public class RewriterShardContext {
 
         for (final String id : rewriterIds) {
 
+            try {
+                client.prepareGet(QUERQY_INDEX_NAME, id).setFetchSource(false).execute().get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new OpenSearchException("Could not load rewriter " + id, e);
+            }
+
             RewriterFactoryAndLogging factoryAndLogging = factories.get(id);
             if (factoryAndLogging == null) {
                 factoryAndLogging = loadFactory(id, false);
@@ -121,7 +128,7 @@ public class RewriterShardContext {
             final GetResponse response;
 
             try {
-                response = client.prepareGet(QUERQY_INDEX_NAME, rewriterId).execute().get();
+                 response = client.prepareGet(QUERQY_INDEX_NAME, rewriterId).execute().get();
             } catch (InterruptedException | ExecutionException e) {
                 throw new OpenSearchException("Could not load rewriter " + rewriterId, e);
             }

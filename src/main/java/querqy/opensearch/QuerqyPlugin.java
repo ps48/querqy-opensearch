@@ -62,10 +62,7 @@ import querqy.opensearch.rewriterstore.TransportNodesClearRewriterCacheAction;
 import querqy.opensearch.rewriterstore.TransportNodesReloadRewriterAction;
 import querqy.opensearch.rewriterstore.TransportPutRewriterAction;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.function.Supplier;
 
 public class QuerqyPlugin extends Plugin implements SearchPlugin, ActionPlugin {
@@ -137,8 +134,10 @@ public class QuerqyPlugin extends Plugin implements SearchPlugin, ActionPlugin {
 
     @Override
     public List<Setting<?>> getSettings() {
-        return Collections.singletonList(Setting.intSetting(SETTINGS_QUERQY_INDEX_NUM_REPLICAS, 1, 0,
+        List<Setting<?>> settings = new ArrayList<>();
+        settings.add(Setting.intSetting(SETTINGS_QUERQY_INDEX_NUM_REPLICAS, 1, 0,
                 Setting.Property.NodeScope));
+        return settings;
 
     }
 }
